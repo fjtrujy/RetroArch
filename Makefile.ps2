@@ -1,5 +1,5 @@
-BUILD_FOR_PCSX2    = 0
-DEBUG              = 0
+BUILD_FOR_PCSX2    = 1
+DEBUG              = 1
 HAVE_KERNEL_PRX    = 0
 HAVE_LOGGER        = 0
 HAVE_FILE_LOGGER   = 0
@@ -42,8 +42,9 @@ RARCH_DEFINES += -DHAVE_GRIFFIN=1 -DRARCH_INTERNAL -DRARCH_CONSOLE -DHAVE_MENU -
 
 LIBDIR =
 LDFLAGS += -L$(PS2SDK)/ports/lib -L$(PS2DEV)/gsKit/lib -L$(PS2SDK)/ee/lib -L$(CDVD_DIR)/lib -L.
-LIBS += -lretro_ps2 -lgskit -ldmakit -lgskit_toolkit -laudsrv -lmf -lpadx -lmtap -lmc -lhdd -lsdl -lfileXio -lz
-LIBS += -lcdvdfs -lpatches -lpoweroff
+LIBS += -lretro_ps2 -lgskit -ldmakit -lgskit_toolkit -laudsrv -lmf -lpadx -lmtap -lmc -lhdd  -lfileXio -lz
+LIBS += -lcdvd -lcdvdfs -lpatches -lpoweroff
+
 
 ifeq ($(BUILD_FOR_PCSX2), 1)
 RARCH_DEFINES += -DBUILD_FOR_PCSX2
@@ -74,7 +75,7 @@ EE_OBJS += $(IRX_DIR)/usbhdfsd_irx.o $(IRX_DIR)/freesd_irx.o $(IRX_DIR)/audsrv_i
 EE_OBJS += $(IRX_DIR)/cdvd_irx.o
 
 # Missing objecst on the PS2SDK
-EE_OBJS += ps2/compat_files/compat_ctype.o ps2/compat_files/time.o ps2/compat_files/ps2_devices.o 
+EE_OBJS += ps2/compat_files/ps2_devices.o
 EE_OBJS += ps2/compat_files/fileXio_cdvd.o ps2/compat_files/ps2_descriptor.o
 
 #EE_OBJS = griffin/griffin.o bootstrap/ps2/kernel_functions.o
@@ -106,6 +107,9 @@ prepare:
 run:
 	ps2client -h $(PS2_IP) execee host:$(EE_BIN)
 
+sim:
+	PCSX2 --elf=$(PWD)/$(EE_BIN) --nogui
+
 debug: clean prepare all run
 
 package:
@@ -115,9 +119,4 @@ release: clean all package
 
 #Include preferences
 include $(PS2SDK)/samples/Makefile.pref
-include $(PS2SDK)/samples/Makefile.eeglobal
-
-#Linking with C++
-$(EE_BIN): $(EE_OBJS) $(PS2SDK)/ee/startup/crt0.o
-	$(EE_CXX) $(EE_NO_CRT) -T$(PS2SDK)/ee/startup/linkfile $(EE_CXXFLAGS) \
-		-o $(EE_BIN) $(PS2SDK)/ee/startup/crt0.o $(CRTI_OBJ) $(CRTBEGIN_OBJ) $(EE_OBJS) $(CRTEND_OBJ) $(CRTN_OBJ) $(EE_LDFLAGS) $(EE_LIBS)
+include $(PS2SDK)/samples/Makefile.eeglobal_cpp
