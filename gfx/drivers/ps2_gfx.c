@@ -109,16 +109,8 @@ static void deinitTexture(GSTEXTURE *texture)
    texture->Clut = NULL;
 }
 
-static bool texture_need_prepare(GSTEXTURE *texture,
-      int width, int height, int PSM)
-{
-   return texture->Width  != width  || 
-          texture->Height != height ||
-          texture->PSM    != PSM;
-}
-
 static void set_texture(GSTEXTURE *texture, const void *frame,
-      int width, int height, int PSM, int filter, bool color_correction)
+      int width, int height, int PSM, int filter)
 {
    texture->Width  = width;
    texture->Height = height;
@@ -231,30 +223,22 @@ static bool ps2_gfx_frame(void *data, const void *frame,
    }
 #endif
 
-   gsKit_clear(ps2->gsGlobal, GS_BLACK);
-
    if (frame)
    {
-      bool sendPalette = false;
       struct retro_hw_ps2_insets padding = empty_ps2_insets;
+      /* Checking if the transfer is done in the core */
       if (frame != RETRO_HW_FRAME_BUFFER_VALID)
-      {
-         /* Checking if the transfer is done in the core */
+      { 
          /* calculate proper width based in the pitch */
          int bytes_per_pixel = (ps2->PSM == GS_PSM_CT32) ? 4 : 2;
          int real_width      = pitch / bytes_per_pixel; 
-         set_texture(ps2->coreTexture, frame, real_width, height, ps2->PSM, ps2->core_filter, 1);
+         set_texture(ps2->coreTexture, frame, real_width, height, ps2->PSM, ps2->core_filter);
 
          padding.right       = real_width - width;
       }
       else
       {
-         sendPalette               = ps2->iface.updatedPalette;
-         ps2->iface.updatedPalette = false;
          padding = ps2->iface.padding;
-         if (ps2->iface.clearTexture)
-            ps2->iface.clearTexture = false;
-      }
 
       gsKit_TexManager_invalidate(ps2->gsGlobal, ps2->coreTexture);
       gsKit_TexManager_bind(ps2->gsGlobal, ps2->coreTexture);
@@ -337,11 +321,9 @@ static void ps2_set_texture_frame(void *data, const void *frame, bool rgb32,
 {
    ps2_video_t *ps2      = (ps2_video_t*)data;
 
-   bool color_correction = false;
    int PSM               = (rgb32 ? GS_PSM_CT32 : GS_PSM_CT16);
-   bool texture_changed  = texture_need_prepare(ps2->menuTexture, width, height, PSM);
 
-   set_texture(ps2->menuTexture, frame, width, height, PSM, ps2->menu_filter, color_correction);
+   set_texture(ps2->menuTexture, frame, width, height, PSM, ps2->menu_filter);
    gsKit_TexManager_invalidate(ps2->gsGlobal, ps2->menuTexture);
 }
 
@@ -351,10 +333,8 @@ static void ps2_set_texture_enable(void *data, bool enable, bool fullscreen)
 
    if (ps2->menuVisible != enable)
    {
-      /* If Menu change status, CLEAR VRAM */
-      gsKit_TexManager_invalidate(ps2->gsGlobal, ps2->menuTexture);
-      ps2->iface.clearTexture   = true;
-      ps2->iface.updatedPalette = true;
+      /* If Menu change status, CLEAR SCREEN */
+      gsKit_clear(ps2->gsGlobal, GS_BLACK);
    }
    ps2->menuVisible = enable;
    ps2->fullscreen  = fullscreen;
@@ -364,8 +344,6 @@ static bool ps2_get_hw_render_interface(void* data,
       const struct retro_hw_render_interface** iface)
 {
    ps2_video_t          *ps2 = (ps2_video_t*)data;
-   ps2->iface.clearTexture   = false;
-   ps2->iface.updatedPalette = true;
    ps2->iface.padding        = empty_ps2_insets;
    *iface                    = 
       (const struct retro_hw_render_interface*)&ps2->iface;
