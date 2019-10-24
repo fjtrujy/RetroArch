@@ -16,9 +16,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <kernel.h>
 #include <string.h>
-#include <fileXio_rpc.h>
 
 static DescriptorTranslation *__ps2_fdmap[MAX_OPEN_FILES];
 static DescriptorTranslation __ps2_fdmap_pool[MAX_OPEN_FILES];
@@ -143,12 +141,5 @@ DescriptorTranslation *__ps2_fd_grab(int fd)
 
    _unlock();
    return map;
-}
-
-time_t time(time_t *t)
-{
-   time_t tim = -1;
-   /* TODO: This function need to be implemented again because the SDK one is not working fine */
-   return tim;
 }
 

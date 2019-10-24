@@ -29,10 +29,10 @@
 #include <libpad.h>
 #include <libcdvd-common.h>
 #include <cdvd_rpc.h>
-#include <fileXio_cdvd.h>
+// #include <fileXio_cdvd.h>
 #include <ps2_devices.h>
 #include <ps2_irx_variables.h>
-#include <ps2_descriptor.h>
+// #include <ps2_descriptor.h>
 
 char eboot_path[512];
 char user_path[512];
@@ -212,12 +212,12 @@ static void frontend_ps2_init(void *data)
 
    /* Initializes CDVD library */
    /* SCECdINoD init without check for a disc. Reduces risk of a lockup if the drive is in a erroneous state. */
-   sceCdInit(SCECdINoD);
-   if (CDVD_Init() != 1) {
-      RARCH_ERR("CDVD_Init library not initalizated\n");
-   }
+   // sceCdInit(SCECdINoD);
+   // if (CDVD_Init() != 1) {
+   //    RARCH_ERR("CDVD_Init library not initalizated\n");
+   // }
 
-   _init_ps2_io();
+   // _init_ps2_io();
 
    /* Prepare device */
    getcwd(cwd, sizeof(cwd));
@@ -237,11 +237,11 @@ static void frontend_ps2_deinit(void *data)
    verbosity_disable();
    command_event(CMD_EVENT_LOG_FILE_DEINIT, NULL);
 #endif
-   _free_ps2_io();
-   CDVD_Stop();
+   // _free_ps2_io();
+   // CDVD_Stop();
    padEnd();
    audsrv_quit();
-   fileXioExit();
+   // fileXioExit();
    Exit(0);
 }
 
@@ -350,6 +350,11 @@ static int frontend_ps2_parse_drive_list(void *data, bool load_content)
          FILE_TYPE_DIRECTORY, 0, 0);
    menu_entries_append_enum(list,
          rootDevicePath(BOOT_DEVICE_MC1),
+         msg_hash_to_str(MENU_ENUM_LABEL_FILE_DETECT_CORE_LIST_PUSH_DIR),
+         enum_idx,
+         FILE_TYPE_DIRECTORY, 0, 0);
+      menu_entries_append_enum(list,
+         rootDevicePath(BOOT_DEVICE_CDROM),
          msg_hash_to_str(MENU_ENUM_LABEL_FILE_DETECT_CORE_LIST_PUSH_DIR),
          enum_idx,
          FILE_TYPE_DIRECTORY, 0, 0);

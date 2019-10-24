@@ -189,6 +189,7 @@ int ps2fileXioDopen(const char *name)
    if (deviceID == BOOT_DEVICE_CDFS)
       return fileXioCDDopen(name);
    return fileXioDopen(name);
+      fd = opendir(name);
 }
 
 int ps2fileXioDread(int fd, iox_dirent_t *dirent)
