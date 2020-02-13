@@ -482,6 +482,7 @@ VIDEO DRIVER
 #include "../gfx/drivers/gx_gfx.c"
 #elif defined(PSP)
 #include "../gfx/drivers/psp1_gfx.c"
+#include "../gfx/drivers/psp1_light_gfx.c"
 #elif defined(PS2)
 #include "../gfx/drivers/ps2_gfx.c"
 #elif defined(HAVE_VITA2D)

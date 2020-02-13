@@ -452,6 +452,7 @@ static const video_driver_t *video_drivers[] = {
 #endif
 #ifdef PSP
    &video_psp1,
+   &video_psp1_light,
 #endif
 #ifdef PS2
    &video_ps2,

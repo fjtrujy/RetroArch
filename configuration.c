@@ -799,7 +799,7 @@ const char *config_get_default_video(void)
       case VIDEO_D3D12:
          return "d3d12";
       case VIDEO_PSP1:
-         return "psp1";
+         return "psp1_light";
       case VIDEO_PS2:
          return "ps2";
       case VIDEO_VITA2D:

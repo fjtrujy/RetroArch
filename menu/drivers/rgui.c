@@ -982,7 +982,8 @@ static void rgui_set_pixel_format_function(void)
       argb32_to_pixel_platform_format = argb32_to_abgr1555;
    else if (string_is_equal(driver_ident, "gx"))      /* GEKKO */
       argb32_to_pixel_platform_format = argb32_to_rgb5a3;
-   else if (string_is_equal(driver_ident, "psp1"))    /* PSP */
+   else if (string_is_equal(driver_ident, "psp1") ||
+            string_is_equal(driver_ident, "psp1_light"))     /* PSP */
       argb32_to_pixel_platform_format = argb32_to_abgr4444;
    else if (string_is_equal(driver_ident, "d3d10") || /* D3D10/11/12 */
             string_is_equal(driver_ident, "d3d11") ||
