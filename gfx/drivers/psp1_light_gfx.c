@@ -737,16 +737,6 @@ static void psp_light_update_viewport(psp1_light_video_t* psp,
 
 }
 
-static void psp_light_set_rotation(void *data, unsigned rotation)
-{
-   psp1_light_video_t *psp = (psp1_light_video_t*)data;
-
-   if (!psp)
-      return;
-
-   psp->rotation = rotation;
-   psp->should_resize = true;
-}
 static void psp_light_set_filtering(void *data, unsigned index, bool smooth)
 {
    psp1_light_video_t *psp = (psp1_light_video_t*)data;
@@ -755,44 +745,8 @@ static void psp_light_set_filtering(void *data, unsigned index, bool smooth)
       psp->tex_filter = smooth? GU_LINEAR : GU_NEAREST;
 }
 
-static void psp_light_set_aspect_ratio(void *data, unsigned aspect_ratio_idx)
-{
-   psp1_light_video_t *psp = (psp1_light_video_t*)data;
-
-   if (!psp)
-      return;
-
-   psp->keep_aspect   = true;
-   psp->should_resize = true;
-}
-
-static void psp_light_apply_state_changes(void *data)
-{
-   psp1_light_video_t *psp = (psp1_light_video_t*)data;
-
-   if (psp)
-      psp->should_resize = true;
-}
-
-static void psp_light_viewport_info(void *data, struct video_viewport *vp)
-{
-   psp1_light_video_t *psp = (psp1_light_video_t*)data;
-
-   if (psp)
-      *vp = psp->vp;
-}
-
-static uint32_t psp_light_get_flags(void *data)
-{
-   uint32_t             flags   = 0;
-
-   BIT32_SET(flags, GFX_CTX_FLAGS_SCREENSHOTS_SUPPORTED);
-
-   return flags;
-}
-
 static const video_poke_interface_t psp_light_poke_interface = {
-   psp_light_get_flags,
+   NULL,          /* get_flags  */
    NULL,
    NULL,
    NULL,
@@ -803,8 +757,8 @@ static const video_poke_interface_t psp_light_poke_interface = {
    NULL, /* get_video_output_next */
    NULL, /* get_current_framebuffer */
    NULL, /* get_proc_address */
-   psp_light_set_aspect_ratio,
-   psp_light_apply_state_changes,
+   NULL, /* set_aspect_ratio */
+   NULL, /* apply_state_changes */
    psp_light_set_texture_frame,
    psp_light_set_texture_enable,
    NULL,                        /* set_osd_msg */
@@ -820,89 +774,6 @@ static void psp_light_get_poke_interface(void *data,
 {
    (void)data;
    *iface = &psp_light_poke_interface;
-}
-
-static bool psp_light_read_viewport(void *data, uint8_t *buffer, bool is_idle)
-{
-   void* src_buffer;
-   int i, j, src_bufferwidth, src_pixelformat, src_x, src_y, src_x_max, src_y_max;
-   uint8_t* dst = buffer;
-   psp1_light_video_t *psp = (psp1_light_video_t*)data;
-
-   (void)data;
-   (void)buffer;
-
-   sceDisplayGetFrameBuf(&src_buffer, &src_bufferwidth, &src_pixelformat, PSP_DISPLAY_SETBUF_NEXTFRAME);
-
-   src_x     = (psp->vp.x > 0)? psp->vp.x : 0;
-   src_y     = (psp->vp.y > 0)? psp->vp.y : 0;
-   src_x_max = ((psp->vp.x + psp->vp.width) < src_bufferwidth)? (psp->vp.x + psp->vp.width): src_bufferwidth;
-   src_y_max = ((psp->vp.y + psp->vp.height) < SCEGU_SCR_HEIGHT)? (psp->vp.y + psp->vp.height): SCEGU_SCR_HEIGHT;
-
-   switch(src_pixelformat)
-   {
-   case PSP_DISPLAY_PIXEL_FORMAT_565:
-      for (j = (src_y_max - 1); j >= src_y ; j--)
-      {
-         uint16_t* src = (uint16_t*)src_buffer + src_bufferwidth * j + src_x;
-         for (i = src_x; i < src_x_max; i++)
-         {
-
-            *(dst++) = ((*src) >> 11) << 3;
-            *(dst++) = (((*src) >> 5) << 2) &0xFF;
-            *(dst++) = ((*src) & 0x1F) << 3;
-            src++;
-         }
-      }
-      return true;
-
-   case PSP_DISPLAY_PIXEL_FORMAT_5551:
-      for (j = (src_y_max - 1); j >= src_y ; j--)
-      {
-         uint16_t* src = (uint16_t*)src_buffer + src_bufferwidth * j + src_x;
-         for (i = src_x; i < src_x_max; i++)
-         {
-
-            *(dst++) = (((*src) >> 10) << 3) &0xFF;
-            *(dst++) = (((*src) >> 5) << 3) &0xFF;
-            *(dst++) = ((*src) & 0x1F) << 3;
-            src++;
-         }
-      }
-      return true;
-
-   case PSP_DISPLAY_PIXEL_FORMAT_4444:
-      for (j = (src_y_max - 1); j >= src_y ; j--)
-      {
-         uint16_t* src = (uint16_t*)src_buffer + src_bufferwidth * j + src_x;
-         for (i = src_x; i < src_x_max; i++)
-         {
-
-            *(dst++) = ((*src) >> 4) & 0xF0;
-            *(dst++) = (*src)        & 0xF0;
-            *(dst++) = ((*src) << 4) & 0xF0;
-            src++;
-         }
-      }
-      return true;
-
-   case PSP_DISPLAY_PIXEL_FORMAT_8888:
-      for (j = (src_y_max - 1); j >= src_y ; j--)
-      {
-         uint32_t* src = (uint32_t*)src_buffer + src_bufferwidth * j + src_x;
-         for (i = src_x; i < src_x_max; i++)
-         {
-
-            *(dst++) = ((*src) >> 16) & 0xFF;
-            *(dst++) = ((*src) >> 8 ) & 0xFF;
-            *(dst++) = (*src) & 0xFF;
-            src++;
-         }
-      }
-      return true;
-   }
-
-   return false;
 }
 
 static bool psp_light_set_shader(void *data,
@@ -927,9 +798,9 @@ video_driver_t video_psp1_light = {
    psp_light_free,
    "psp1_light",
    NULL, /* set_viewport */
-   psp_light_set_rotation,
-   psp_light_viewport_info,
-   psp_light_read_viewport,
+   NULL, /* set_rotation */
+   NULL, /* viewport_info */
+   NULL, /* read_viewport  */
    NULL, /* read_frame_raw */
 #ifdef HAVE_OVERLAY
    NULL,
