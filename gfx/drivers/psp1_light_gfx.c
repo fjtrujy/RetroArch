@@ -125,25 +125,22 @@ static void init_psp_video(psp1_light_video_t *psp) {
 	sceGuDepthBuffer(psp->zbp, SCEGU_VRAM_WIDTH);
 	sceGuScissor(0, 0, SCEGU_SCR_WIDTH, SCEGU_SCR_HEIGHT);
 	sceGuEnable(GU_SCISSOR_TEST);
-	sceGuClearColor(0);
+	sceGuEnable(GU_TEXTURE_2D);
+
 	sceGuFinish();
 	sceGuSync(0, 0);
 
-	sceDisplayWaitVblankStart();
+   sceDisplayWaitVblankStart();
 	sceGuDisplay(1); // Comment it out for pspDebugScreen in PPSSPP
-
-   int x,y;
-   for (y = 0; y < 272; ++y)
-	{
-		unsigned int* row = &pixels[y * 512];
-		for (x = 0; x < 480; ++x)
-		{
-			row[x] = x * y;
-		}
-	}
 
    sceKernelDcacheWritebackAll();
 }
+static void refreshScreen(psp1_light_video_t *psp) {
+   sceGuSync(0, 0);
+   sceDisplayWaitVblankStart();
+   sceGuSwapBuffers();
+}
+
 
 static void *psp_light_init(const video_info_t *video,
       input_driver_t **input, void **input_data)
@@ -177,21 +174,27 @@ static bool psp_light_frame(void *data, const void *frame,
    if (!width || !height)
       return false;
 
-   sceGuStart(GU_DIRECT, psp->main_dList);
+   if (frame && !psp->menu.active) {
+      sceKernelDcacheWritebackRange(frame, width * height * 2);
 
-   // // copy image from ram to vram
-   sceGuCopyImage(GU_PSM_8888, 0, 0, 480, 272, 512, pixels, 0, 0, 512, (void*)(0x04000000+(u32)psp->framebuffer));
-   sceGuTexSync();
+      sceGuStart(GU_DIRECT, psp->main_dList);
+      sceGuTexMode(GU_PSM_5650, 0, 0, GU_FALSE); // 8-bit image
+      sceGuTexImage(0, next_pow2(width), next_pow2(height), width, frame);
+      sceGuTexFunc(GU_TFX_REPLACE, GU_TCC_RGB);
+      sceGuTexFilter(GU_LINEAR, GU_LINEAR);
 
-   sceGuFinish();
-   sceGuSync(0,0);
+      psp1_light_sprite_t *sprite = calloc(1, sizeof(*sprite));
+      sprite->v0.u = 0; sprite->v0.v = 0;
+      sprite->v0.x = 0; sprite->v0.y = 0; sprite->v0.z = 0;
+      sprite->v1.u = width; sprite->v1.v = height;
+      sprite->v1.x = SCEGU_SCR_WIDTH; sprite->v1.y = SCEGU_SCR_HEIGHT; sprite->v1.z = 0;
+      sceGuDrawArray(GU_SPRITES,GU_TEXTURE_32BITF|GU_VERTEX_32BITF|GU_TRANSFORM_2D,2,0,sprite);
 
-	sceDisplayWaitVblankStart();
-   psp->framebuffer = sceGuSwapBuffers();
+      sceGuFinish();
+      free(sprite);
+   }
 
-   pspDebugScreenSetXY(0, 0);
-	pspDebugScreenSetTextColor(0xFFFFFFFF);
-	pspDebugScreenPuts("psp_light_frame\n");
+   refreshScreen(psp);
 
    return true;
 }
@@ -241,6 +244,26 @@ static void psp_light_set_texture_frame(void *data, const void *frame, bool rgb3
 
    (void) rgb32;
    (void) alpha;
+   
+   sceKernelDcacheWritebackRange(frame, width * height * 2);
+
+   sceGuStart(GU_DIRECT, psp->main_dList);
+   sceGuTexMode(GU_PSM_4444, 0, 0, GU_FALSE); // 8-bit image
+   sceGuTexImage(0, next_pow2(width), next_pow2(height), width, frame);
+   sceGuTexFunc(GU_TFX_REPLACE, GU_TCC_RGB);
+	sceGuTexFilter(GU_LINEAR, GU_LINEAR);
+
+   psp1_light_sprite_t *sprite = calloc(1, sizeof(*sprite));
+   sprite->v0.u = 0; sprite->v0.v = 0;
+   sprite->v0.x = 0; sprite->v0.y = 0; sprite->v0.z = 0;
+   sprite->v1.u = width; sprite->v1.v = height;
+   sprite->v1.x = SCEGU_SCR_WIDTH; sprite->v1.y = SCEGU_SCR_HEIGHT; sprite->v1.z = 0;
+   sceGuDrawArray(GU_SPRITES,GU_TEXTURE_32BITF|GU_VERTEX_32BITF|GU_TRANSFORM_2D,2,0,sprite);
+
+   // wait for next frame
+
+   sceGuFinish();
+   free(sprite);
 }
 
 static void psp_light_set_texture_enable(void *data, bool state, bool full_screen)
