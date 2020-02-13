@@ -481,6 +481,7 @@ VIDEO DRIVER
 #if defined(GEKKO)
 #include "../gfx/drivers/gx_gfx.c"
 #elif defined(PSP)
+#include "../gfx/drivers/vram.c"
 #include "../gfx/drivers/psp1_gfx.c"
 #include "../gfx/drivers/psp1_light_gfx.c"
 #elif defined(PS2)

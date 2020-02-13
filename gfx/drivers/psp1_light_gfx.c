@@ -36,6 +36,7 @@
 #include "../font_driver.h"
 
 #include "../../defines/psp_defines.h"
+#include "vram.h"
 
 #ifndef SCEGU_SCR_WIDTH
 #define SCEGU_SCR_WIDTH 480
@@ -49,24 +50,7 @@
 #define SCEGU_VRAM_WIDTH 512
 #endif
 
-/* Frame buffer */
-#define SCEGU_VRAM_TOP        (0x44000000)
-/* 16bit mode */
-#define SCEGU_VRAM_BUFSIZE    (SCEGU_VRAM_WIDTH*SCEGU_SCR_HEIGHT*2)
-#define SCEGU_VRAM_BP_0       ((void *)(SCEGU_VRAM_TOP))
-#define SCEGU_VRAM_BP_1       ((void *)(SCEGU_VRAM_TOP+SCEGU_VRAM_BUFSIZE))
-#define SCEGU_VRAM_BP_2       ((void *)(SCEGU_VRAM_TOP+(SCEGU_VRAM_BUFSIZE*2)))
-/* 32bit mode */
-#define SCEGU_VRAM_BUFSIZE32  (SCEGU_VRAM_WIDTH*SCEGU_SCR_HEIGHT*4)
-#define SCEGU_VRAM_BP32_0     ((void *)(SCEGU_VRAM_TOP))
-#define SCEGU_VRAM_BP32_1     ((void *)(SCEGU_VRAM_TOP+SCEGU_VRAM_BUFSIZE32))
-#define SCEGU_VRAM_BP32_2     ((void *)(SCEGU_VRAM_TOP+(SCEGU_VRAM_BUFSIZE32*2)))
-
-#define TO_UNCACHED_PTR(ptr)  ((void *)((uint32_t)(ptr)|0x40000000))
-#define TO_CACHED_PTR(ptr)    ((void *)((uint32_t)(ptr)&~0x40000000))
-
-#define FROM_GU_POINTER(ptr)  ((void *)((uint32_t)(ptr)|0x44000000))
-#define TO_GU_POINTER(ptr)    ((void *)((uint32_t)(ptr)&~0x44000000))
+static unsigned int __attribute__((aligned(16))) pixels[512*272];
 
 typedef struct __attribute__((packed)) psp1_light_vertex
 {
@@ -95,6 +79,15 @@ typedef struct psp1_light_menu_frame
 typedef struct psp1_light_video
 {
    void* main_dList;
+   void* fbp0;
+	void* fbp1;
+	void* zbp;
+   void* framebuffer;
+
+
+
+
+
    void* frame_dList;
    void* draw_buffer;
    void* texture;
@@ -118,7 +111,38 @@ typedef struct psp1_light_video
 
 
 static void init_psp_video(psp1_light_video_t *psp) {
+   psp->framebuffer = 0;
+   psp->main_dList = memalign(0x10, 262144);
+   psp->fbp0 = getStaticVramBuffer(SCEGU_VRAM_WIDTH, SCEGU_SCR_HEIGHT, GU_PSM_8888);
+	psp->fbp1 = getStaticVramBuffer(SCEGU_VRAM_WIDTH, SCEGU_SCR_HEIGHT, GU_PSM_8888);
+	psp->zbp = getStaticVramBuffer(SCEGU_VRAM_WIDTH, SCEGU_SCR_HEIGHT, GU_PSM_4444);
 
+	sceGuInit();
+
+	sceGuStart(GU_DIRECT, psp->main_dList);
+	sceGuDrawBuffer(GU_PSM_8888, psp->fbp0, SCEGU_VRAM_WIDTH);
+	sceGuDispBuffer(SCEGU_SCR_WIDTH, SCEGU_SCR_HEIGHT, psp->fbp1, SCEGU_VRAM_WIDTH);
+	sceGuDepthBuffer(psp->zbp, SCEGU_VRAM_WIDTH);
+	sceGuScissor(0, 0, SCEGU_SCR_WIDTH, SCEGU_SCR_HEIGHT);
+	sceGuEnable(GU_SCISSOR_TEST);
+	sceGuClearColor(0);
+	sceGuFinish();
+	sceGuSync(0, 0);
+
+	sceDisplayWaitVblankStart();
+	sceGuDisplay(1); // Comment it out for pspDebugScreen in PPSSPP
+
+   int x,y;
+   for (y = 0; y < 272; ++y)
+	{
+		unsigned int* row = &pixels[y * 512];
+		for (x = 0; x < 480; ++x)
+		{
+			row[x] = x * y;
+		}
+	}
+
+   sceKernelDcacheWritebackAll();
 }
 
 static void *psp_light_init(const video_info_t *video,
@@ -152,6 +176,18 @@ static bool psp_light_frame(void *data, const void *frame,
 
    if (!width || !height)
       return false;
+
+   sceGuStart(GU_DIRECT, psp->main_dList);
+
+   // // copy image from ram to vram
+   sceGuCopyImage(GU_PSM_8888, 0, 0, 480, 272, 512, pixels, 0, 0, 512, (void*)(0x04000000+(u32)psp->framebuffer));
+   sceGuTexSync();
+
+   sceGuFinish();
+   sceGuSync(0,0);
+
+	sceDisplayWaitVblankStart();
+   psp->framebuffer = sceGuSwapBuffers();
 
    pspDebugScreenSetXY(0, 0);
 	pspDebugScreenSetTextColor(0xFFFFFFFF);
@@ -190,6 +226,10 @@ static bool psp_light_suppress_screensaver(void *data, bool enable)
 static void psp_light_free(void *data)
 {
    psp1_light_video_t *psp = (psp1_light_video_t*)data;
+
+   sceGuTerm();
+
+   free(psp->main_dList);
 
    free(data);
 }
