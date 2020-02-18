@@ -16,7 +16,6 @@
 
 #include "../frontend_driver.h"
 
-#include <io_common.h>
 #include <loadfile.h>
 #include <unistd.h>
 #include <sbv_patches.h>

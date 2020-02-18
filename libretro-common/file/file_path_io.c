@@ -82,11 +82,6 @@
 #include <pspkernel.h>
 #endif
 
-#if defined(PS2)
-#include <fileXio_rpc.h>
-#include <fileXio.h>
-#endif
-
 #if defined(__CELLOS_LV2__)
 #include <cell/cell_fs.h>
 #endif

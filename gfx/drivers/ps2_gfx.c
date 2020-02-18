@@ -219,7 +219,6 @@ static bool ps2_gfx_frame(void *data, const void *frame,
 #if defined(DEBUG)
    if (frame_count%60==0)
       printf("ps2_gfx_frame %lu\n", frame_count);
-   }
 #endif
 
    if (frame)
@@ -238,6 +237,7 @@ static bool ps2_gfx_frame(void *data, const void *frame,
       else
       {
          padding = ps2->iface.padding;
+      }
 
       gsKit_TexManager_invalidate(ps2->gsGlobal, ps2->coreTexture);
       gsKit_TexManager_bind(ps2->gsGlobal, ps2->coreTexture);
@@ -248,8 +248,8 @@ static bool ps2_gfx_frame(void *data, const void *frame,
    {
       bool texture_empty = !ps2->menuTexture->Width || !ps2->menuTexture->Height;
       if (!texture_empty)
+      {
          gsKit_TexManager_bind(ps2->gsGlobal, ps2->menuTexture);
-         if(ps2->clearVRAM)
          prim_texture(ps2->gsGlobal, ps2->menuTexture, 2, ps2->fullscreen, empty_ps2_insets);
       }
    }

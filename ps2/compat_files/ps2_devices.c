@@ -180,13 +180,11 @@ bool waitUntilDeviceIsReady(enum BootDeviceIDs device_id)
       nopdelay();
 
       retries--;
+   }
    if (dir) {
       ret = 1;
       closedir(dir);
    }
-
-   if (openFile > 0)
-      fileXioDclose(openFile);
    
    return ret;
 }

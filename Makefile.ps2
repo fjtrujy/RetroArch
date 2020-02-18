@@ -1,4 +1,4 @@
-BUILD_FOR_PCSX2    = 1
+BUILD_FOR_PCSX2    = 0
 DEBUG              = 1
 HAVE_KERNEL_PRX    = 0
 HAVE_LOGGER        = 0
@@ -110,7 +110,7 @@ run:
 sim:
 	PCSX2 --elf=$(PWD)/$(EE_BIN) --nogui
 
-debug: clean prepare all run
+debug: clean all run
 
 package:
 	ps2-packer $(EE_BIN) $(TARGET_RELEASE)
