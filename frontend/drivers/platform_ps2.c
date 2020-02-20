@@ -221,7 +221,9 @@ static void frontend_ps2_init(void *data)
    /* Prepare device */
    getcwd(cwd, sizeof(cwd));
    bootDeviceID=getBootDeviceID(cwd);
+#if !defined(DEBUG) || defined(BUILD_FOR_PCSX2)
    waitUntilDeviceIsReady(bootDeviceID);
+#endif
 
 #if defined(HAVE_FILE_LOGGER)
    retro_main_log_file_init("retroarch.log", false);

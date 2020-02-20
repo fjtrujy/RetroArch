@@ -249,7 +249,6 @@ static bool ps2_gfx_frame(void *data, const void *frame,
       bool texture_empty = !ps2->menuTexture->Width || !ps2->menuTexture->Height;
       if (!texture_empty)
       {
-         gsKit_TexManager_bind(ps2->gsGlobal, ps2->menuTexture);
          prim_texture(ps2->gsGlobal, ps2->menuTexture, 2, ps2->fullscreen, empty_ps2_insets);
       }
    }
@@ -324,6 +323,7 @@ static void ps2_set_texture_frame(void *data, const void *frame, bool rgb32,
 
    set_texture(ps2->menuTexture, frame, width, height, PSM, ps2->menu_filter);
    gsKit_TexManager_invalidate(ps2->gsGlobal, ps2->menuTexture);
+   gsKit_TexManager_bind(ps2->gsGlobal, ps2->menuTexture);
 }
 
 static void ps2_set_texture_enable(void *data, bool enable, bool fullscreen)
