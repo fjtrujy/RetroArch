@@ -1436,6 +1436,9 @@ void dir_check_defaults(const char *custom_ini_path)
     * so it doesn't create unnecessary directories */
    if (!string_is_empty(custom_ini_path) &&
        path_is_valid(custom_ini_path))
+#else
+   if (path_is_valid("/data/retroarch/custom.ini"))
+#endif
       return;
 
    for (i = 0; i < DEFAULT_DIR_LAST; i++)

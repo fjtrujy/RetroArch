@@ -6515,7 +6515,7 @@ static void xmb_context_reset_background(xmb_handle_t *xmb, const char *iconpath
                menu_display_handle_wallpaper_upload, NULL);
    }
 
-#ifdef ORBIS
+#if defined(ORBIS) && defined(HAVE_LIBORBIS)
    /* To avoid weird behaviour on orbis with remote host */
    sleep(5);
 #endif

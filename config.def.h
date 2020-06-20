@@ -74,6 +74,8 @@
 #define DEFAULT_ASPECT_RATIO 1.3333f
 #endif
 
+#elif defined(ORBIS)
+#define DEFAULT_MAX_PADS 4
 #if defined(GEKKO)
 #define DEFAULT_MOUSE_SCALE 1
 #endif
