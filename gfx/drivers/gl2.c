@@ -3139,6 +3139,15 @@ static bool gl2_frame(void *data, const void *frame,
 
    /* check if we are fast forwarding or in menu, 
     * if we are ignore hard sync */
+#if defined(ORBIS)
+   if (video_info->hard_sync
+         && !video_info->input_driver_nonblock_state
+         && !gl->menu_texture_enable)
+   {
+      glClear(GL_COLOR_BUFFER_BIT);
+      glFinish();
+   }
+#else
    if (  gl->have_sync
          && hard_sync
          && !input_driver_nonblock_state
@@ -3149,6 +3158,7 @@ static bool gl2_frame(void *data, const void *frame,
       gl2_renderchain_fence_iterate(gl, chain,
             hard_sync_frames);
    }
+#endif
 
 #ifndef HAVE_OPENGLES
    if (gl->core_context_in_use)
