@@ -1,0 +1,27 @@
+name: CI-psp
+
+on:
+  push:
+    branches: 
+      - '*'
+    tags:
+      - v*
+  pull_request:
+  repository_dispatch:
+    types: [run_build]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: pspdev/pspdev:latest
+    steps:
+    - name: Install dependencies
+      run: |
+        apk add build-base git bash
+
+    - uses: actions/checkout@v2
+
+    - name: Compile project
+      run: |
+        (cd bootstrap/psp1/kernel_functions_prx/ && make && cd -)
+        make -f Makefile.psp1 -j$nproc ||:
