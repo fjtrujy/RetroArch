@@ -21,6 +21,10 @@ jobs:
 
     - uses: actions/checkout@v2
 
+    - name: Explore content
+      run: |
+        ls -ll /usr/local/pspdev/psp/include/
+
     - name: Compile project
       run: |
         (cd bootstrap/psp1/kernel_functions_prx/ && make && cd -)
