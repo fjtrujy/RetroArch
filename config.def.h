@@ -1270,6 +1270,8 @@ static const int default_content_favorites_size = 200;
  * drivers and display widgets */
 #if defined(VITA)
 #define DEFAULT_MENU_SCALE_FACTOR 1.5f
+#elif defined(PS2)
+#define DEFAULT_MENU_SCALE_FACTOR 2.0f
 #else
 #define DEFAULT_MENU_SCALE_FACTOR 1.0f
 #endif

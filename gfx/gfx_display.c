@@ -103,6 +103,9 @@ static gfx_display_ctx_driver_t *gfx_display_ctx_drivers[] = {
 #ifdef HAVE_VITA2D
    &gfx_display_ctx_vita2d,
 #endif
+#ifdef PS2
+   &gfx_display_ctx_ps2,
+#endif
 #ifdef _3DS
    &gfx_display_ctx_ctr,
 #endif
@@ -195,6 +198,10 @@ static bool gfx_display_check_compatibility(
          break;
       case GFX_VIDEO_DRIVER_VITA2D:
          if (string_is_equal(video_driver, "vita2d"))
+            return true;
+         break;
+      case GFX_VIDEO_DRIVER_PS2:
+         if (string_is_equal(video_driver, "ps2"))
             return true;
          break;
       case GFX_VIDEO_DRIVER_CTR:

@@ -168,6 +168,8 @@ static void init_ps2_video(ps2_video_t *ps2)
    ps2->iface.interface_type    = RETRO_HW_RENDER_INTERFACE_GSKIT_PS2;
    ps2->iface.interface_version = RETRO_HW_RENDER_INTERFACE_GSKIT_PS2_VERSION;
    ps2->iface.coreTexture       = ps2->coreTexture;
+
+   video_driver_set_size(ps2->gsGlobal->Width, ps2->gsGlobal->Height);
 }
 
 static void ps2_gfx_deinit_texture(GSTEXTURE *texture)
@@ -341,6 +343,9 @@ static bool ps2_gfx_frame(void *data, const void *frame,
 
    if (ps2->menuVisible)
    {
+#ifdef HAVE_MENU
+      menu_driver_frame(ps2->menuVisible, video_info);
+#endif
       bool texture_empty = !ps2->menuTexture->Width || !ps2->menuTexture->Height;
       if (!texture_empty)
       {
@@ -402,6 +407,52 @@ static void ps2_gfx_free(void *data)
 static bool ps2_gfx_set_shader(void *data,
       enum rarch_shader_type type, const char *path) { return false; }
 
+static uintptr_t ps2_load_texture(void *video_data, void *data,
+      bool threaded, enum texture_filter_type filter_type)
+{
+   unsigned int stride, pitch, j, filter;
+   const uint32_t *frame32        = NULL;
+   struct texture_image *image    = (struct texture_image*)data;
+
+   filter = ((filter_type == TEXTURE_FILTER_MIPMAP_LINEAR) ||
+      (filter_type == TEXTURE_FILTER_LINEAR)) ? GS_FILTER_LINEAR : GS_FILTER_NEAREST;
+
+   int textSize = image->width * image->height * 4;
+   GSTEXTURE *texture = prepare_new_texture();
+   uint32_t *tex32 = malloc(textSize);
+
+   for (j = 0; j <  image->width * image->height; j++ ) {
+      uint32_t currentColor = image->pixels[j];
+      tex32[j] = ((currentColor >> 16) & 0x000000FF) | (currentColor & 0xFF00FF00) | ((currentColor << 16) & 0x00FF0000);
+   }
+
+   set_texture(texture, tex32, image->width, image->height, GS_PSM_CT32, filter);
+
+   return (uintptr_t)texture;
+}
+
+static void ps2_unload_texture(void *data, bool threaded,
+      uintptr_t handle)
+{
+   ps2_video_t *ps2 = (ps2_video_t*)data;
+   GSTEXTURE *gsTexture = (GSTEXTURE *)handle;
+
+   if (!gsTexture)
+      return;
+   gsKit_TexManager_invalidate(ps2->gsGlobal, gsTexture);
+   free(gsTexture->Mem);
+   free(gsTexture);
+}
+
+static void ps2_gfx_viewport_info(void *data,
+      struct video_viewport *vp)
+{
+    ps2_video_t *ps2 = (ps2_video_t*)data;
+
+    if (ps2)
+       *vp = ps2->vp;
+}
+
 static void ps2_set_filtering(void *data, unsigned index, bool smooth, bool ctx_scaling)
 {
    ps2_video_t *ps2 = (ps2_video_t*)data;
@@ -453,10 +504,17 @@ static bool ps2_get_hw_render_interface(void* data,
    return true;
 }
 
+static uint32_t ps2_get_flags(void *data)
+{
+   uint32_t             flags   = 0;
+
+   return flags;
+}
+
 static const video_poke_interface_t ps2_poke_interface = {
-   NULL,          /* get_flags  */
-   NULL,
-   NULL,
+   ps2_get_flags,          /* get_flags  */
+   ps2_load_texture,
+   ps2_unload_texture,
    NULL,
    NULL, /* get_refresh_rate */
    ps2_set_filtering,
@@ -497,7 +555,7 @@ video_driver_t video_ps2 = {
    "ps2",
    NULL, /* set_viewport */
    NULL, /* set_rotation */
-   NULL, /* viewport_info */
+   ps2_gfx_viewport_info,
    NULL, /* read_viewport  */
    NULL, /* read_frame_raw */
 
