@@ -524,6 +524,7 @@ VIDEO DRIVER
 #include "../gfx/drivers/psp1_gfx.c"
 #elif defined(PS2)
 #include "../gfx/drivers/ps2_gfx.c"
+#include "../gfx/drivers_display/gfx_display_ps2.c"
 #elif defined(HAVE_VITA2D)
 #include "../deps/libvita2d/source/vita2d.c"
 #include "../deps/libvita2d/source/vita2d_texture.c"

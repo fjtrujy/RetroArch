@@ -52,6 +52,7 @@ typedef struct ps2_video
    GSGLOBAL *gsGlobal;
    GSTEXTURE *menuTexture;
    GSTEXTURE *coreTexture;
+   GSTEXTURE *displayTexture;
 } ps2_video_t;
 
 static int vsync_sema_id;
@@ -149,6 +150,7 @@ static void init_ps2_video(ps2_video_t *ps2)
    ps2->vsync_callback_id = gsKit_add_vsync_handler(vsync_handler);
    ps2->menuTexture = prepare_new_texture();
    ps2->coreTexture = prepare_new_texture();
+   ps2->displayTexture = prepare_new_texture();
 
    /* Used for cores that supports palette */
    ps2->iface.interface_type    = RETRO_HW_RENDER_INTERFACE_GSKIT_PS2;
@@ -302,6 +304,9 @@ static bool ps2_gfx_frame(void *data, const void *frame,
 
    if (ps2->menuVisible)
    {
+#ifdef HAVE_MENU
+      menu_driver_frame(ps2->menuVisible, video_info);
+#endif
       bool texture_empty = !ps2->menuTexture->Width || !ps2->menuTexture->Height;
       if (!texture_empty)
       {
