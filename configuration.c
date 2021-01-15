@@ -2718,6 +2718,7 @@ static bool check_menu_driver_compatibility(settings_t *settings)
          string_is_equal(video_driver, "vulkan") ||
          string_is_equal(video_driver, "metal")  ||
          string_is_equal(video_driver, "ctr")    ||
+         string_is_equal(video_driver, "ps2")    ||
          string_is_equal(video_driver, "vita2d")
       )
       return true;
