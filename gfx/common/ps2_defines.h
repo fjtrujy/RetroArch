@@ -36,6 +36,7 @@ typedef struct ps2_video
    GSGLOBAL *gsGlobal;
    GSTEXTURE *menuTexture;
    GSTEXTURE *coreTexture;
+   GSTEXTURE *displayTexture;
 
    /* Last scaling state, for detecting changes */
    int iTextureWidth;

@@ -82,6 +82,9 @@ static gfx_display_ctx_driver_t *gfx_display_ctx_drivers[] = {
 #ifdef HAVE_VITA2D
    &gfx_display_ctx_vita2d,
 #endif
+#ifdef PS2
+   &gfx_display_ctx_ps2,
+#endif
 #ifdef _3DS
    &gfx_display_ctx_ctr,
 #endif

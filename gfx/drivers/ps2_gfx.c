@@ -34,6 +34,10 @@
 #include "../gfx_display.h"
 #include "../common/ps2_defines.h"
 
+#ifdef HAVE_MENU
+#include "../../menu/menu_driver.h"
+#endif
+
 /* Generic tint color */
 #define GS_TEXT GS_SETREG_RGBA(0x80, 0x80, 0x80, 0x80)
 /* turn black GS Screen */
@@ -589,6 +593,7 @@ static void init_ps2_video(ps2_video_t *ps2)
 
    ps2->menuTexture             = (GSTEXTURE*)calloc(1, sizeof(GSTEXTURE));
    ps2->coreTexture             = (GSTEXTURE*)calloc(1, sizeof(GSTEXTURE));
+   ps2->coreTexture             = (GSTEXTURE*)calloc(1, sizeof(GSTEXTURE));
 
    ps2->video_window_offset_x   = 0;
    ps2->video_window_offset_y   = 0;
@@ -597,6 +602,8 @@ static void init_ps2_video(ps2_video_t *ps2)
    ps2->iface.interface_type    = RETRO_HW_RENDER_INTERFACE_GSKIT_PS2;
    ps2->iface.interface_version = RETRO_HW_RENDER_INTERFACE_GSKIT_PS2_VERSION;
    ps2->iface.coreTexture       = ps2->coreTexture;
+
+   video_driver_set_size(ps2->gsGlobal->Width, ps2->gsGlobal->Height);
 }
 
 static void ps2_deinit_texture(GSTEXTURE *texture)
@@ -869,6 +876,9 @@ static bool ps2_frame(void *data, const void *frame,
 
    if (ps2->menuVisible)
    {
+#ifdef HAVE_MENU
+      menu_driver_frame(ps2->menuVisible, video_info);
+#endif
       bool texture_empty = !ps2->menuTexture->Width || !ps2->menuTexture->Height;
       if (!texture_empty)
       {
@@ -976,6 +986,56 @@ static void ps2_set_video_mode(void *data, unsigned fbWidth, unsigned lines,
    rmSetMode(ps2, 0);
 }
 
+static uintptr_t ps2_load_texture(void *video_data, void *data,
+      bool threaded, enum texture_filter_type filter_type)
+{
+   unsigned int stride, pitch, j, filter;
+
+   const uint32_t *frame32        = NULL;
+   struct texture_image *image    = (struct texture_image*)data;
+
+   // printf("%s\n", __FUNCTION__);
+   // printf("- texture: %dx%d\n", image->width, image->height);
+
+   filter = ((filter_type == TEXTURE_FILTER_MIPMAP_LINEAR) ||
+      (filter_type == TEXTURE_FILTER_LINEAR)) ? GS_FILTER_LINEAR : GS_FILTER_NEAREST;
+
+   int textSize = image->width * image->height * 4;
+   GSTEXTURE *texture = (GSTEXTURE*)calloc(1, sizeof(GSTEXTURE));
+   uint32_t *tex32 = malloc(textSize);
+
+   for (j = 0; j <  image->width * image->height; j++ ) {
+      uint32_t currentColor = image->pixels[j];
+      tex32[j] = ((currentColor >> 16) & 0x000000FF) | (currentColor & 0xFF00FF00) | ((currentColor << 16) & 0x00FF0000);
+   }
+
+   set_texture(texture, tex32, image->width, image->height, GS_PSM_CT32, filter);
+
+   return (uintptr_t)texture;
+}
+
+static void ps2_unload_texture(void *data, bool threaded,
+      uintptr_t handle)
+{
+   ps2_video_t *ps2 = (ps2_video_t*)data;
+   GSTEXTURE *gsTexture = (GSTEXTURE *)handle;
+
+   if (!gsTexture)
+      return;
+   gsKit_TexManager_invalidate(ps2->gsGlobal, gsTexture);
+   free(gsTexture->Mem);
+   free(gsTexture);
+}
+
+static void ps2_gfx_viewport_info(void *data,
+      struct video_viewport *vp)
+{
+    ps2_video_t *ps2 = (ps2_video_t*)data;
+
+    if (ps2)
+       *vp = ps2->vp;
+}
+
 static void ps2_set_filtering(void *data, unsigned index, bool smooth, bool ctx_scaling)
 {
    ps2_video_t *ps2 = (ps2_video_t *)data;
@@ -1064,8 +1124,8 @@ static bool ps2_get_hw_render_interface(void *data,
 
 static const video_poke_interface_t ps2_poke_interface = {
    NULL, /* get_flags  */
-   NULL, /* load_texture */
-   NULL, /* unload_texture */
+   ps2_load_texture,
+   ps2_unload_texture,
    ps2_set_video_mode,
    NULL, /* get_refresh_rate */
    ps2_set_filtering,
@@ -1096,6 +1156,135 @@ static void ps2_get_poke_interface(void *data,
    *iface = &ps2_poke_interface;
 }
 
+static void *gfx_display_ps2_get_default_mvp(void *data)
+{
+   ps2_video_t *ps2 = (ps2_video_t*)data;
+
+   if (!ps2)
+      return NULL;
+
+   return &ps2->vp;
+}
+
+static void gfx_display_ps2_draw(gfx_display_ctx_draw_t *draw,
+      void *data, unsigned video_width, unsigned video_height)
+{
+   int colorR, colorG, colorB, colorA;
+   unsigned i;
+   GSTEXTURE *texture   = NULL;
+   const float *vertex              = NULL;
+   const float *tex_coord           = NULL;
+   const float *color               = NULL;
+   ps2_video_t             *ps2 = (ps2_video_t*)data;
+
+   //  printf("%s:\n", __FUNCTION__);
+   //  printf("- dest:    %dx%d @ x=%.1f, y=%.1f\n", draw->width, draw->height, draw->x, draw->y);
+
+   if (!ps2 || !draw || draw->x < 0 || draw->y < 0)
+      return;
+
+   if (draw->width > ps2->gsGlobal->Width)
+    draw->width > ps2->gsGlobal->Width;
+
+   if (draw->height > ps2->gsGlobal->Height)
+    draw->height = ps2->gsGlobal->Height;
+
+   texture            = (GSTEXTURE*)draw->texture;
+   vertex             = draw->coords->vertex;
+   tex_coord          = draw->coords->tex_coord;
+   color              = draw->coords->color;
+
+   if (!texture)
+      return;
+
+   //  printf("- texture: %dx%d\n", texture->Width, texture->Height);
+
+   colorR = (int)((color[0])*128.f);
+   colorG = (int)((color[1])*128.f);
+   colorB = (int)((color[2])*128.f);
+   // 255 == 2.0
+   // 128 == 1.0
+   //  64 == 0.5
+   // The texture uses alpha 255, so by multiplying with 64 in the "texture function"
+   // the result becomes 128.
+   colorA = (int)((color[3])* 64.f);
+
+   //  printf("- colorf:  %.2f-%.2f-%.2f-%.2f\n", color[0], color[1], color[2], color[3]);
+   //  printf("- colori:  0x%02x-0x%02x-0x%02x-0x%02x\n", colorR, colorG, colorB, colorA);
+
+/*
+ * Color calculation:
+ *
+ * 1. The texture function:
+ * - Texture function = MODULATE, this is fixed in gsKit (other functions not supported!!!)
+ * - TCC flag (Texture Color Component) must be set to use the alpha value of the texture:
+ *   - gsGlobal->PrimAlphaEnable = GS_SETTING_ON
+ * - Texture  colors: (Rt, Gt, Bt, At), taken from texture
+ * - Fragment colors: (Rf, Gf, Bf, Af), taken from draw->coords->color
+ * - Output   colors: (Rv, Gv, Bv, Av)
+ * - MODULATE function:
+ *   - Rv = Rt * Rf
+ *   - Gv = Gt * Gf
+ *   - Bv = Bt * Bf
+ *   - Av = At * Af
+ *   - When the fragment colors are 0x80 (128), the output colors dont change
+ *
+ * 2. Alpha blending:
+ * - gsKit_set_primalpha(gsGlobal, GS_SETREG_ALPHA(0, 1, 0, 1, 0), 0);
+ *   - A = 0 = Cs (RGB value of the source is used)
+ *   - B = 1 = Cd (RGB value in the frame buffer is used.)
+ *   - C = 0 = As (Alpha of the source is used.)
+ *   - D = 1 = Cd (RGB value in the frame buffer is used.)
+ *   - FIX = not used
+ * - (A - B) * C + D            NOTE: X * Y = (X x Y) >> 7
+ * - (Cs - Cd) * As + Cd
+ */
+
+    //if (texture->Width > 1 || texture->Height > 1) {
+        // This is a texture
+        gsKit_TexManager_bind(ps2->gsGlobal, texture);
+        gsKit_prim_sprite_texture(ps2->gsGlobal, texture,
+            draw->x,                /* X1 */
+            ps2->gsGlobal->Height - draw->y,                /* Y1 */
+            0,                      /* U1 */
+            texture->Height,                      /* V1 */
+            draw->x + draw->width,  /* X2 */
+            ps2->gsGlobal->Height - (draw->y + draw->height), /* Y2 */
+            texture->Width,         /* U2 */
+            0,        /* V2 */
+            4,                      /* Z  */
+            GS_SETREG_RGBAQ(colorR,colorG,colorB,colorA,0x00));
+    //}
+    //else {
+        // This is not a texture, its a colored rectangle
+        // Draw faster using a quad
+        // NOTE: do we need to multiply the color by the 1 pixel texture color?
+    //    gsKit_prim_sprite(ps2->gsGlobal,
+    //        draw->x,                /* X1 */
+    //        draw->y,                /* Y1 */
+    //        draw->x + draw->width,  /* X3 */
+    //        draw->y + draw->height, /* Y3 */
+    //        4,                      /* Z  */
+    //        GS_SETREG_RGBAQ(colorR,colorG,colorB,colorA,0x00));
+    //}
+}
+
+gfx_display_ctx_driver_t gfx_display_ctx_ps2 = {
+   gfx_display_ps2_draw,
+   NULL,                                        /* draw_pipeline */
+   NULL,                                        /* blend_begin   */
+   NULL,                                        /* blend_end     */
+   NULL,                                        /* get_default_mvp */
+   NULL,                                        /* get_default_vertices */
+   NULL,                                        /* get_default_tex_coords */
+   FONT_DRIVER_RENDER_PS2,
+   GFX_VIDEO_DRIVER_PS2,
+   "ps2",
+   true,
+   NULL,
+   NULL
+};
+
 video_driver_t video_ps2 = {
    ps2_init,
    ps2_frame,
@@ -1109,7 +1298,7 @@ video_driver_t video_ps2 = {
    "ps2",
    NULL, /* set_viewport */
    NULL, /* set_rotation */
-   NULL, /* viewport_info */
+   ps2_gfx_viewport_info, /* viewport_info */
    NULL, /* read_viewport  */
    NULL, /* read_frame_raw */
 #ifdef HAVE_OVERLAY
