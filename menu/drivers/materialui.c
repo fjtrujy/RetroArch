@@ -5422,7 +5422,7 @@ static void materialui_render_header(
                else if (powerstate.percent >= 20)
                   texture_battery = mui->textures.list[MUI_TEXTURE_BATTERY_20];
             }
-
+            
             materialui_draw_icon(
                   userdata,
                   video_width,
@@ -6606,7 +6606,7 @@ static void materialui_frame(void *data, video_frame_info_t *video_info)
 
    if (!mui)
       return;
-
+   
    video_driver_set_viewport(video_width, video_height, true, false);
 
    /* Clear text */

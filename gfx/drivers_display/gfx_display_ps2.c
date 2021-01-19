@@ -28,112 +28,117 @@
 #include "../../retroarch.h"
 #include "../font_driver.h"
 
-// static void set_texture(GSTEXTURE *texture, const void *frame,
-//       int width, int height, int PSM, int filter)
-// {
-//    texture->Width  = width;
-//    texture->Height = height;
-//    texture->PSM    = PSM;
-//    texture->Filter = filter;
-//    texture->Mem    = (void *)frame;
-// }
-
-
-
-
-
-
-
-
-
-
-static const float ps2_vertexes[] = {
-   0, 0,
-   1, 0,
-   0, 1,
-   1, 1
-};
-
-static const float ps2_tex_coords[] = {
-   0, 1,
-   1, 1,
-   0, 0,
-   1, 0
-};
-
-static const float ps2_colors[] = {
-   1.0f, 1.0f, 1.0f, 1.0f,
-   1.0f, 1.0f, 1.0f, 1.0f,
-   1.0f, 1.0f, 1.0f, 1.0f,
-   1.0f, 1.0f, 1.0f, 1.0f,
-};
-
-static const float *gfx_display_ps2_get_default_vertices(void)
-{
-   printf("FJTRUJY: %s:%i\n", __FILE__, __LINE__);
-   return &ps2_vertexes[0];
-}
-
-static const float *gfx_display_ps2_get_default_color(void)
-{
-   printf("FJTRUJY: %s:%i\n", __FILE__, __LINE__);
-   return &ps2_colors[0];
-}
-
-static const float *gfx_display_ps2_get_default_tex_coords(void)
-{
-   printf("FJTRUJY: %s:%i\n", __FILE__, __LINE__);
-   return &ps2_tex_coords[0];
-}
-
 static void *gfx_display_ps2_get_default_mvp(void *data)
 {
-   printf("FJTRUJY: %s:%i\n", __FILE__, __LINE__);
    ps2_video_t *ps2 = (ps2_video_t*)data;
 
    if (!ps2)
       return NULL;
 
-   return NULL;
-   // return &ps2->mvp_no_rot;
+   return &ps2->vp;
 }
 
 static void gfx_display_ps2_draw(gfx_display_ctx_draw_t *draw,
       void *data, unsigned video_width, unsigned video_height)
 {
-   printf("FJTRUJY: %s:%i\n", __FILE__, __LINE__);
-
+   int colorR, colorG, colorB, colorA;
    unsigned i;
-   // struct vita2d_texture *texture   = NULL;
+   GSTEXTURE *texture   = NULL;
    const float *vertex              = NULL;
    const float *tex_coord           = NULL;
    const float *color               = NULL;
    ps2_video_t             *ps2 = (ps2_video_t*)data;
 
-   if (!ps2 || !draw)
+   //  printf("%s:\n", __FUNCTION__);
+   //  printf("- dest:    %dx%d @ x=%.1f, y=%.1f\n", draw->width, draw->height, draw->x, draw->y);
+
+   if (!ps2 || !draw || draw->x < 0 || draw->y < 0)
       return;
 
-   // texture            = (struct vita2d_texture*)draw->texture;
+   if (draw->width > ps2->gsGlobal->Width)
+    draw->width > ps2->gsGlobal->Width;
+
+   if (draw->height > ps2->gsGlobal->Height)
+    draw->height = ps2->gsGlobal->Height;
+
+   texture            = (GSTEXTURE*)draw->texture;
    vertex             = draw->coords->vertex;
    tex_coord          = draw->coords->tex_coord;
    color              = draw->coords->color;
 
-   set_texture(ps2->displayTexture, draw->texture, draw->width, draw->height, GS_PSM_CT16, 0);
-   gsKit_TexManager_invalidate(ps2->gsGlobal, ps2->displayTexture);
-   gsKit_TexManager_bind(ps2->gsGlobal, ps2->displayTexture);
-   
-   gsKit_prim_sprite_texture(ps2->gsGlobal, draw->texture,
-         0,            /* X1 */
-         0,            /* Y1 */
-         0,  /* U1 */
-         0,   /* V1 */
-         ps2->gsGlobal->Width,            /* X2 */
-         ps2->gsGlobal->Height,            /* Y2 */
-         draw->width,   /* U2 */
-         draw->height, /* V2 */
-         4,
-         GS_TEXT);
+   if (!texture)
+      return;
 
+   //  printf("- texture: %dx%d\n", texture->Width, texture->Height);
+
+   colorR = (int)((color[0])*128.f);
+   colorG = (int)((color[1])*128.f);
+   colorB = (int)((color[2])*128.f);
+   // 255 == 2.0
+   // 128 == 1.0
+   //  64 == 0.5
+   // The texture uses alpha 255, so by multiplying with 64 in the "texture function"
+   // the result becomes 128.
+   colorA = (int)((color[3])* 64.f);
+
+   //  printf("- colorf:  %.2f-%.2f-%.2f-%.2f\n", color[0], color[1], color[2], color[3]);
+   //  printf("- colori:  0x%02x-0x%02x-0x%02x-0x%02x\n", colorR, colorG, colorB, colorA);
+
+/*
+ * Color calculation:
+ *
+ * 1. The texture function:
+ * - Texture function = MODULATE, this is fixed in gsKit (other functions not supported!!!)
+ * - TCC flag (Texture Color Component) must be set to use the alpha value of the texture:
+ *   - gsGlobal->PrimAlphaEnable = GS_SETTING_ON
+ * - Texture  colors: (Rt, Gt, Bt, At), taken from texture
+ * - Fragment colors: (Rf, Gf, Bf, Af), taken from draw->coords->color
+ * - Output   colors: (Rv, Gv, Bv, Av)
+ * - MODULATE function:
+ *   - Rv = Rt * Rf
+ *   - Gv = Gt * Gf
+ *   - Bv = Bt * Bf
+ *   - Av = At * Af
+ *   - When the fragment colors are 0x80 (128), the output colors dont change
+ *
+ * 2. Alpha blending:
+ * - gsKit_set_primalpha(gsGlobal, GS_SETREG_ALPHA(0, 1, 0, 1, 0), 0);
+ *   - A = 0 = Cs (RGB value of the source is used)
+ *   - B = 1 = Cd (RGB value in the frame buffer is used.)
+ *   - C = 0 = As (Alpha of the source is used.)
+ *   - D = 1 = Cd (RGB value in the frame buffer is used.)
+ *   - FIX = not used
+ * - (A - B) * C + D            NOTE: X * Y = (X x Y) >> 7
+ * - (Cs - Cd) * As + Cd
+ */
+
+    //if (texture->Width > 1 || texture->Height > 1) {
+        // This is a texture
+        gsKit_TexManager_bind(ps2->gsGlobal, texture);
+        gsKit_prim_sprite_texture(ps2->gsGlobal, texture,
+            draw->x,                /* X1 */
+            ps2->gsGlobal->Height - draw->y,                /* Y1 */
+            0,                      /* U1 */
+            texture->Height,                      /* V1 */
+            draw->x + draw->width,  /* X2 */
+            ps2->gsGlobal->Height - (draw->y + draw->height), /* Y2 */
+            texture->Width,         /* U2 */
+            0,        /* V2 */
+            4,                      /* Z  */
+            GS_SETREG_RGBAQ(colorR,colorG,colorB,colorA,0x00));
+    //}
+    //else {
+        // This is not a texture, its a colored rectangle
+        // Draw faster using a quad
+        // NOTE: do we need to multiply the color by the 1 pixel texture color?
+    //    gsKit_prim_sprite(ps2->gsGlobal,
+    //        draw->x,                /* X1 */
+    //        draw->y,                /* Y1 */
+    //        draw->x + draw->width,  /* X3 */
+    //        draw->y + draw->height, /* Y3 */
+    //        4,                      /* Z  */
+    //        GS_SETREG_RGBAQ(colorR,colorG,colorB,colorA,0x00));
+    //}
 }
 
 static bool gfx_display_ps2_font_init_first(
@@ -141,8 +146,10 @@ static bool gfx_display_ps2_font_init_first(
       const char *font_path, float font_size,
       bool is_threaded)
 {
-   printf("FJTRUJY: %s:%i\n", __FILE__, __LINE__);
    font_data_t **handle = (font_data_t**)font_handle;
+
+   //  printf("%s\n", __FUNCTION__);
+
    *handle              = font_driver_init_first(video_data,
          font_path, font_size, true,
          is_threaded,
@@ -150,40 +157,18 @@ static bool gfx_display_ps2_font_init_first(
    return *handle;
 }
 
-static void gfx_display_ps2_scissor_begin(void *data,
-      unsigned video_width,
-      unsigned video_height,
-      int x, int y,
-      unsigned width, unsigned height)
-{
-    printf("FJTRUJY: %s:%i\n", __FILE__, __LINE__);
-   // ps2_set_clip_rectangle(x, y, x + width, y + height);  
-   // ps2_set_region_clip(SCE_GXM_REGION_CLIP_OUTSIDE, x, y, x + width, y + height);
-}
-
-static void gfx_display_ps2_scissor_end(
-      void *data,
-      unsigned video_width,
-      unsigned video_height)
-{
-    printf("FJTRUJY: %s:%i\n", __FILE__, __LINE__);
-   // ps2_set_region_clip(SCE_GXM_REGION_CLIP_NONE, 0, 0,
-   //       video_width, video_height);
-   // ps2_disable_clipping();
-}
-
 gfx_display_ctx_driver_t gfx_display_ctx_ps2 = {
    gfx_display_ps2_draw,
    NULL,                                        /* draw_pipeline */
    NULL,                                        /* blend_begin   */
    NULL,                                        /* blend_end     */
-   gfx_display_ps2_get_default_mvp,
-   gfx_display_ps2_get_default_vertices,
-   gfx_display_ps2_get_default_tex_coords,
+   NULL,
+   NULL,
+   NULL,
    gfx_display_ps2_font_init_first,
    GFX_VIDEO_DRIVER_PS2,
    "ps2",
    true,
-   gfx_display_ps2_scissor_begin,
-   gfx_display_ps2_scissor_end
+   NULL,
+   NULL
 };

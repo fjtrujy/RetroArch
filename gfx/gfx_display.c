@@ -659,7 +659,7 @@ void gfx_display_draw_bg(gfx_display_ctx_draw_t *draw,
       new_vertex                     = draw->vertex;
    else if (dispctx->get_default_vertices)
       new_vertex                     = dispctx->get_default_vertices();
-
+   
    if (draw->tex_coord)
       new_tex_coord                  = draw->tex_coord;
    else if (dispctx->get_default_tex_coords)
@@ -682,7 +682,7 @@ void gfx_display_draw_bg(gfx_display_ctx_draw_t *draw,
 
    if (add_opacity_to_wallpaper)
       gfx_display_set_alpha(draw->color, override_opacity);
-
+   
    if (dispctx->get_default_mvp)
       draw->matrix_data = (math_matrix_4x4*)dispctx->get_default_mvp(
             userdata);
