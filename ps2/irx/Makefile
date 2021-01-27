@@ -5,7 +5,7 @@ IRX_DIR = $(PS2SDK)/iop/irx
 #IRX modules
 # IRX modules - modules have to be in IRX_DIR
 IRX_FILES += iomanX.irx fileXio.irx sio2man.irx mtapman.irx padman.irx mcman.irx mcserv.irx usbd.irx usbhdfsd.irx
-IRX_FILES += libsd.irx audsrv.irx cdfs.irx
+IRX_FILES += libsd.irx audsrv.irx cdfs.irx ps2dev9.irx ps2atad.irx ps2hdd.irx ps2fs.irx
 IRX_C_FILES = $(IRX_FILES:.irx=_irx.c) 
 
 all: irxs

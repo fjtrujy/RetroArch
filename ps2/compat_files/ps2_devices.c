@@ -20,6 +20,7 @@
 #include <string.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#include <lists/string_list.h>
 
 #define DEVICE_SLASH "/"
 
@@ -152,6 +153,26 @@ enum BootDeviceIDs getBootDeviceID(char *path)
       return BOOT_DEVICE_HOST9;
    else
       return BOOT_DEVICE_UNKNOWN;
+}
+
+/* This method returns the proper mountString and mountPoint giving the current cwd 
+ * it split by ":" using the 3 first elements, if not will return false
+ * Example: if path = hdd0:__common:pfs:/cores then
+ * mountString = "pfs:"
+ * mountPoint = "hdd0:__common"
+*/
+bool getMountInfo(char *path, char *mountString, char *mountPoint)
+{
+   struct string_list *str_list = string_split(path, ":");
+   if (str_list->size < 3 )
+   {
+      return false;
+   }
+
+   sprintf(mountPoint, "%s:%s", str_list->elems[0].data, str_list->elems[1].data);
+   sprintf(mountString, "%s:", str_list->elems[2].data);
+
+   return true;
 }
 
 /* HACK! If booting from a USB device, keep trying to
