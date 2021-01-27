@@ -25,6 +25,17 @@
 #include <ps2_irx_variables.h>
 #include <loadfile.h>
 #include <elf-loader.h>
+#include <libcdvd-common.h>
+
+#ifndef IS_SALAMANDER
+#include <libpwroff.h>
+#endif
+
+
+#define NEWLIB_PORT_AWARE
+#include <fileXio_rpc.h>
+#include <fileio.h>
+#include <hdd-ioctl.h>
 
 #include <file/file_path.h>
 #include <string/stdstring.h>
@@ -35,9 +46,16 @@
 #include "../../verbosity.h"
 #include "../../paths.h"
 
+#if defined(DEBUG_SCREEN)
+#include <debug.h>
+#endif
+
 
 static enum frontend_fork ps2_fork_mode = FRONTEND_FORK_NONE;
 static char cwd[FILENAME_MAX];
+static char mountString[10];
+static int hddMounted = 0;
+static int hddModulesLoaded = 0;
 
 static void create_path_names(void)
 {
@@ -114,7 +132,44 @@ static void reset_IOP()
    sbv_patch_disable_prefix_check();
 }
 
-static void load_modules()
+static void load_hdd_modules() 
+{
+   int ret;
+   static char hddarg[] = "-o"
+                        "\0"
+                        "4"
+                        "\0"
+                        "-n"
+                        "\0"
+                        "20";
+   
+   ret = SifExecModuleBuffer(&ps2dev9_irx, size_ps2dev9_irx, 0, NULL, NULL);
+
+   ret = SifExecModuleBuffer(&ps2atad_irx, size_ps2atad_irx, 0, NULL, NULL);
+   if (ret < 0) 
+   {
+      RARCH_LOG("HDD: No HardDisk Drive detected.\n");
+      return;
+   }
+
+   ret = SifExecModuleBuffer(&ps2hdd_irx, size_ps2hdd_irx, sizeof(hddarg), hddarg, NULL);
+   if (ret < 0) 
+   {
+      RARCH_LOG("HDD: No HardDisk Drive detected.\n");
+      return;
+   }
+
+   ret = SifExecModuleBuffer(&ps2fs_irx, size_ps2fs_irx, 0, NULL, NULL);
+   if (ret < 0) {
+      RARCH_LOG("HDD: HardDisk Drive not formatted (PFS).\n");
+      return;
+   }
+
+   RARCH_LOG("HDDSUPPORT modules loaded\n");
+   hddModulesLoaded = 1;
+}
+
+static void load_modules() 
 {
    /* I/O Files */
    SifExecModuleBuffer(&iomanX_irx, size_iomanX_irx, 0, NULL, NULL);
@@ -128,6 +183,14 @@ static void load_modules()
    /* USB */
    SifExecModuleBuffer(&usbd_irx, size_usbd_irx, 0, NULL, NULL);
    SifExecModuleBuffer(&usbhdfsd_irx, size_usbhdfsd_irx, 0, NULL, NULL);
+
+#ifndef IS_SALAMANDER
+   /* Power off */
+   SifExecModuleBuffer(&poweroff_irx, size_poweroff_irx, 0, NULL, NULL);
+#endif
+
+   /* HDD */
+   load_hdd_modules();
 
 #if !defined(DEBUG)
    /* CDFS */
@@ -144,6 +207,71 @@ static void load_modules()
    SifExecModuleBuffer(&audsrv_irx, size_audsrv_irx, 0, NULL, NULL);
 #endif
 }
+
+static int mount_hdd_partition() {
+   char mountPath[FILENAME_MAX];
+   char mountPoint[50];
+   char mountedCWD[FILENAME_MAX];
+   int shouldMount = 0;
+   enum BootDeviceIDs bootDeviceID;
+
+   /* Try to mount HDD partition, either from cwd or default one */
+   bootDeviceID = getBootDeviceID(cwd);
+   if (bootDeviceID == BOOT_DEVICE_HDD || bootDeviceID == BOOT_DEVICE_HDD0)
+   {
+      shouldMount = 1;
+      strlcpy(mountPath, cwd, sizeof(mountPath));
+   } 
+   else 
+   {
+      sprintf(mountPath, "hdd0:__common:pfs");
+#if !defined(IS_SALAMANDER)
+      shouldMount = 1;
+#endif
+   }
+
+   if (!shouldMount)
+      return 0;
+
+   if (getMountInfo(mountPath, mountString, mountPoint, mountedCWD) != 1) 
+   {
+      RARCH_LOG("Partition info not readed\n");
+      return 0;
+   }
+
+   if (fileXioMount(mountString, mountPoint, FIO_MT_RDWR) < 0) 
+   {
+      RARCH_LOG("Error mount mounting partition %s, %s\n", mountString, mountPoint);
+      return 0;
+   }
+
+   // If we're booting from HDD, we must update the cwd variable
+   if (bootDeviceID == BOOT_DEVICE_HDD || bootDeviceID == BOOT_DEVICE_HDD0)
+      sprintf(cwd, "%s/", mountedCWD);
+
+   return 1;
+}
+
+static void prepare_for_exit(void) 
+{
+   if (hddMounted) 
+   {
+      fileXioUmount(mountString);
+      fileXioDevctl(mountString, PDIOC_CLOSEALL, NULL, 0, NULL, 0);
+      fileXioDevctl("hdd0:", HDIOC_IDLEIMM, NULL, 0, NULL, 0);
+   }
+
+   if (hddModulesLoaded)
+      fileXioDevctl("dev9x:", DDIOC_OFF, NULL, 0, NULL, 0);
+}
+
+#ifndef IS_SALAMANDER
+static void poweroffHandler(void *arg)
+{
+   prepare_for_exit();
+   poweroffShutdown();
+}
+#endif
 
 static void frontend_ps2_get_env(int *argc, char *argv[],
       void *args, void *params_data)
@@ -189,6 +317,10 @@ static void frontend_ps2_init(void *data)
    reset_IOP();
    load_modules();
 
+#ifndef IS_SALAMANDER
+   poweroffInit();
+   poweroffSetCallback(&poweroffHandler, NULL);
+#endif
 
 #ifndef IS_SALAMANDER
    /* Initializes audsrv library */
@@ -208,14 +340,12 @@ static void frontend_ps2_init(void *data)
    }
 #endif
 
-#if defined(BUILD_FOR_PCSX2)
-   strlcpy(cwd, rootDevicePath(BOOT_DEVICE_MC0), sizeof(cwd));
-#else
    getcwd(cwd, sizeof(cwd));
+   hddMounted = mount_hdd_partition();
+
 #if !defined(IS_SALAMANDER) && !defined(DEBUG)
    // If it is not salamander we need to go one level up for set the CWD.
    path_parent_dir(cwd);
-#endif
 #endif
 
 #if !defined(DEBUG)
@@ -225,6 +355,10 @@ static void frontend_ps2_init(void *data)
 
 static void frontend_ps2_deinit(void *data)
 {
+#if !defined(IS_SALAMANDER)
+   if (ps2_fork_mode == FRONTEND_FORK_NONE)
+      prepare_for_exit();
+#endif
 }
 
 static void frontend_ps2_exec(const char *path, bool should_load_game)
@@ -300,6 +434,7 @@ enum frontend_architecture frontend_ps2_get_arch(void)
 static int frontend_ps2_parse_drive_list(void *data, bool load_content)
 {
 #ifndef IS_SALAMANDER
+   char hdd[10];
    file_list_t *list = (file_list_t*)data;
    enum msg_hash_enums enum_idx = load_content ?
       MENU_ENUM_LABEL_FILE_DETECT_CORE_LIST_PUSH_DIR :
@@ -325,6 +460,15 @@ static int frontend_ps2_parse_drive_list(void *data, bool load_content)
          msg_hash_to_str(MENU_ENUM_LABEL_FILE_DETECT_CORE_LIST_PUSH_DIR),
          enum_idx,
          FILE_TYPE_DIRECTORY, 0, 0);
+   if (hddMounted) 
+   {
+      sprintf(hdd, "%s/", mountString);
+      menu_entries_append_enum(list,
+            hdd,
+            msg_hash_to_str(MENU_ENUM_LABEL_FILE_DETECT_CORE_LIST_PUSH_DIR),
+            enum_idx,
+            FILE_TYPE_DIRECTORY, 0, 0);
+   }
    menu_entries_append_enum(list,
          rootDevicePath(BOOT_DEVICE_HOST),
          msg_hash_to_str(MENU_ENUM_LABEL_FILE_DETECT_CORE_LIST_PUSH_DIR),
