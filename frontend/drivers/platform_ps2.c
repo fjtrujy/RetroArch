@@ -25,10 +25,14 @@
 #include <ps2_irx_variables.h>
 #include <loadfile.h>
 #include <elf-loader.h>
+#include <libpwroff.h>
+#include <libcdvd-common.h>
+
 
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h>
 #include <fileio.h>
+#include <hdd-ioctl.h>
 
 #include <file/file_path.h>
 #include <string/stdstring.h>
@@ -42,12 +46,14 @@
 
 static enum frontend_fork ps2_fork_mode = FRONTEND_FORK_NONE;
 static char cwd[FILENAME_MAX];
-char mountPoint[10];
+char mountString[10];
 
 static void create_path_names(void)
 {
    char user_path[FILENAME_MAX];
 
+   strlcpy(user_path, cwd, sizeof(user_path));
+   strlcat(user_path, "RETROARCH", sizeof(user_path));
 
    /* Content in the same folder */
 
@@ -140,6 +146,7 @@ static void load_modules() {
    SifExecModuleBuffer(&usbhdfsd_irx, size_usbhdfsd_irx, 0, NULL, NULL);
 
    /* HDD */
+   SifExecModuleBuffer(&poweroff_irx, size_poweroff_irx, 0, NULL, NULL);
    SifExecModuleBuffer(&ps2dev9_irx, size_ps2dev9_irx, 0, NULL, NULL);
    SifExecModuleBuffer(&ps2atad_irx, size_ps2atad_irx, 0, NULL, NULL);
    SifExecModuleBuffer(&ps2hdd_irx, size_ps2hdd_irx, sizeof(hddarg), hddarg, NULL);
@@ -163,7 +170,7 @@ static void load_modules() {
 
 static inline void mount_hdd_partition() {
    char mountPath[FILENAME_MAX];
-   char mountString[50];
+   char mountPoint[50];
    int shouldMount = 0;
 
       /* Try to mount HDD partition, either from cwd or default one */
@@ -171,7 +178,9 @@ static inline void mount_hdd_partition() {
    {
       shouldMount = 1;
       strlcpy(mountPath, cwd, sizeof(mountPath));
-   } else {
+   } 
+   else 
+   {
       sprintf(mountPath, "hdd0:__common:pfs");
 #if !defined(IS_SALAMANDER)
       shouldMount = 1;
@@ -184,12 +193,15 @@ static inline void mount_hdd_partition() {
    if (getMountInfo(mountPath, mountString, mountPoint) != 1) 
    {
       RARCH_ERR("Partition info not mounted\n");
-   } else 
+   } 
+   else 
    {
       if (fileXioMount(mountString, mountPoint, FIO_MT_RDWR) < 0) 
       {
          RARCH_ERR("Error mount mounting partition %s, %s\n", mountString, mountPoint);
-      } else {
+      } 
+      else 
+      {
          if (bootDeviceID == BOOT_DEVICE_HDD || bootDeviceID == BOOT_DEVICE_HDD0)
          {
             // If we're booting from HDD, we must update the cwd variable
@@ -197,6 +209,20 @@ static inline void mount_hdd_partition() {
          }
       }
    }
+}
+
+static void prepare_for_exit(void) 
+{
+   fileXioUmount(mountString);
+   fileXioDevctl(mountString, PDIOC_CLOSEALL, NULL, 0, NULL, 0);
+   fileXioDevctl("hdd0:", HDIOC_IDLEIMM, NULL, 0, NULL, 0);
+   while (fileXioDevctl("dev9x:", DDIOC_OFF, NULL, 0, NULL, 0) < 0) {};
+}
+
+static void poweroffHandler(void *arg)
+{
+   prepare_for_exit();
+   poweroffShutdown();
 }
 
 static void frontend_ps2_get_env(int *argc, char *argv[],
@@ -243,6 +269,9 @@ static void frontend_ps2_init(void *data)
    reset_IOP();
    load_modules();
 
+   fileXioInit();
+   poweroffInit();
+   poweroffSetCallback(&poweroffHandler, NULL);
 
 #ifndef IS_SALAMANDER
    /* Initializes audsrv library */
@@ -280,7 +309,7 @@ static void frontend_ps2_init(void *data)
 
 static void frontend_ps2_deinit(void *data)
 {
-   fileXioUmount(mountPoint);
+   prepare_for_exit();
 }
 
 static void frontend_ps2_exec(const char *path, bool should_load_game)
@@ -382,9 +411,9 @@ static int frontend_ps2_parse_drive_list(void *data, bool load_content)
          msg_hash_to_str(MENU_ENUM_LABEL_FILE_DETECT_CORE_LIST_PUSH_DIR),
          enum_idx,
          FILE_TYPE_DIRECTORY, 0, 0);
-   if (strlen(mountPoint) > 0) 
+   if (strlen(mountString) > 0) 
    {
-      sprintf(hdd, "%s/", mountPoint);
+      sprintf(hdd, "%s/", mountString);
       menu_entries_append_enum(list,
             hdd,
             msg_hash_to_str(MENU_ENUM_LABEL_FILE_DETECT_CORE_LIST_PUSH_DIR),

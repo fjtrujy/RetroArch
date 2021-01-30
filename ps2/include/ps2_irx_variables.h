@@ -75,4 +75,7 @@ extern unsigned int size_ps2hdd_irx;
 extern unsigned char ps2fs_irx;
 extern unsigned int size_ps2fs_irx;
 
+extern unsigned char poweroff_irx;
+extern unsigned int size_poweroff_irx;
+
 #endif /* PS2_IRX_VARIABLES_H */
