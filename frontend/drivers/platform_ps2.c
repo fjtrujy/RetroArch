@@ -46,7 +46,9 @@
 
 static enum frontend_fork ps2_fork_mode = FRONTEND_FORK_NONE;
 static char cwd[FILENAME_MAX];
-char mountString[10];
+static char mountString[10];
+static int hddMounted = 0;
+static int hddModulesLoaded = 0;
 
 static void create_path_names(void)
 {
@@ -123,16 +125,53 @@ static void reset_IOP()
    sbv_patch_disable_prefix_check();
 }
 
-static void load_modules() {
+static void load_hdd_modules() 
+{
+   int ret;
    static char hddarg[] = "-o"
-                           "\0"
-                           "4"
-                           "\0"
-                           "-n"
-                           "\0"
-                           "20";
+                        "\0"
+                        "4"
+                        "\0"
+                        "-n"
+                        "\0"
+                        "20";
+   
+   ret = SifExecModuleBuffer(&ps2dev9_irx, size_ps2dev9_irx, 0, NULL, NULL);
 
-      /* I/O Files */
+   ret = SifExecModuleBuffer(&ps2atad_irx, size_ps2atad_irx, 0, NULL, NULL);
+   if (ret < 0) 
+   {
+      RARCH_LOG("HDD: No HardDisk Drive detected.\n");
+      return;
+   }
+
+   ret = SifExecModuleBuffer(&ps2hdd_irx, size_ps2hdd_irx, sizeof(hddarg), hddarg, NULL);
+   if (ret < 0) 
+   {
+      RARCH_LOG("HDD: No HardDisk Drive detected.\n");
+      return;
+   }
+
+   // //Check if a HDD unit is connected
+   // if (hddCheck() < 0) {
+   //    LOG("HDD: No HardDisk Drive detected.\n");
+   //    setErrorMessageWithCode(_STR_HDD_NOT_CONNECTED_ERROR, ERROR_HDD_NOT_DETECTED);
+   //    return;
+   // }
+
+   ret = SifExecModuleBuffer(&ps2fs_irx, size_ps2fs_irx, 0, NULL, NULL);
+   if (ret < 0) {
+      RARCH_LOG("HDD: HardDisk Drive not formatted (PFS).\n");
+      return;
+   }
+
+   RARCH_LOG("HDDSUPPORT modules loaded\n");
+   hddModulesLoaded = 1;
+}
+
+static void load_modules() 
+{
+   /* I/O Files */
    SifExecModuleBuffer(&iomanX_irx, size_iomanX_irx, 0, NULL, NULL);
    SifExecModuleBuffer(&fileXio_irx, size_fileXio_irx, 0, NULL, NULL);
    SifExecModuleBuffer(&sio2man_irx, size_sio2man_irx, 0, NULL, NULL);
@@ -145,12 +184,11 @@ static void load_modules() {
    SifExecModuleBuffer(&usbd_irx, size_usbd_irx, 0, NULL, NULL);
    SifExecModuleBuffer(&usbhdfsd_irx, size_usbhdfsd_irx, 0, NULL, NULL);
 
-   /* HDD */
+   /* Power off */
    SifExecModuleBuffer(&poweroff_irx, size_poweroff_irx, 0, NULL, NULL);
-   SifExecModuleBuffer(&ps2dev9_irx, size_ps2dev9_irx, 0, NULL, NULL);
-   SifExecModuleBuffer(&ps2atad_irx, size_ps2atad_irx, 0, NULL, NULL);
-   SifExecModuleBuffer(&ps2hdd_irx, size_ps2hdd_irx, sizeof(hddarg), hddarg, NULL);
-   SifExecModuleBuffer(&ps2fs_irx, size_ps2fs_irx, 0, NULL, NULL);
+
+   /* HDD */
+   load_hdd_modules();
 
 #if !defined(DEBUG)
    /* CDFS */
@@ -168,7 +206,7 @@ static void load_modules() {
 #endif
 }
 
-static inline void mount_hdd_partition() {
+static int mount_hdd_partition() {
    char mountPath[FILENAME_MAX];
    char mountPoint[50];
    int shouldMount = 0;
@@ -188,35 +226,43 @@ static inline void mount_hdd_partition() {
    }
 
    if (!shouldMount)
-      return;
+      return 0;
 
    if (getMountInfo(mountPath, mountString, mountPoint) != 1) 
    {
-      RARCH_ERR("Partition info not mounted\n");
+      RARCH_LOG("Partition info not readed\n");
    } 
    else 
    {
       if (fileXioMount(mountString, mountPoint, FIO_MT_RDWR) < 0) 
       {
-         RARCH_ERR("Error mount mounting partition %s, %s\n", mountString, mountPoint);
+         RARCH_LOG("Error mount mounting partition %s, %s\n", mountString, mountPoint);
       } 
       else 
       {
          if (bootDeviceID == BOOT_DEVICE_HDD || bootDeviceID == BOOT_DEVICE_HDD0)
          {
             // If we're booting from HDD, we must update the cwd variable
-            strlcpy(cwd, mountString, sizeof(cwd));
+            sprintf(cwd, "%s/", mountString);
          }
+         return 1;
       }
    }
+
+   return 0;
 }
 
 static void prepare_for_exit(void) 
 {
-   fileXioUmount(mountString);
-   fileXioDevctl(mountString, PDIOC_CLOSEALL, NULL, 0, NULL, 0);
-   fileXioDevctl("hdd0:", HDIOC_IDLEIMM, NULL, 0, NULL, 0);
-   while (fileXioDevctl("dev9x:", DDIOC_OFF, NULL, 0, NULL, 0) < 0) {};
+   if (hddMounted) 
+   {
+      fileXioUmount(mountString);
+      fileXioDevctl(mountString, PDIOC_CLOSEALL, NULL, 0, NULL, 0);
+      fileXioDevctl("hdd0:", HDIOC_IDLEIMM, NULL, 0, NULL, 0);
+   }
+
+   if (hddModulesLoaded)
+      fileXioDevctl("dev9x:", DDIOC_OFF, NULL, 0, NULL, 0);
 }
 
 static void poweroffHandler(void *arg)
@@ -228,6 +274,8 @@ static void poweroffHandler(void *arg)
 static void frontend_ps2_get_env(int *argc, char *argv[],
       void *args, void *params_data)
 {
+   printf("%s, %s:%i\n", __FUNCTION__, __FILE__, __LINE__);
+
    int i;
    create_path_names();
 
@@ -255,6 +303,11 @@ static void frontend_ps2_get_env(int *argc, char *argv[],
          RARCH_LOG("argv[1]: %s\n", argv[1]);
 
          RARCH_LOG("Auto-start game %s.\n", argv[1]);
+
+         printf("argv[0]: %s\n", argv[0]);
+         printf("argv[1]: %s\n", argv[1]);
+
+         printf("Auto-start game %s.\n", argv[1]);
       }
    }
 #endif
@@ -269,7 +322,6 @@ static void frontend_ps2_init(void *data)
    reset_IOP();
    load_modules();
 
-   fileXioInit();
    poweroffInit();
    poweroffSetCallback(&poweroffHandler, NULL);
 
@@ -300,7 +352,7 @@ static void frontend_ps2_init(void *data)
    path_parent_dir(cwd);
 #endif
 #endif
-   mount_hdd_partition();
+   hddMounted = mount_hdd_partition();
 
 #if !defined(DEBUG)
    waitUntilDeviceIsReady(cwd);
@@ -411,7 +463,7 @@ static int frontend_ps2_parse_drive_list(void *data, bool load_content)
          msg_hash_to_str(MENU_ENUM_LABEL_FILE_DETECT_CORE_LIST_PUSH_DIR),
          enum_idx,
          FILE_TYPE_DIRECTORY, 0, 0);
-   if (strlen(mountString) > 0) 
+   if (hddMounted) 
    {
       sprintf(hdd, "%s/", mountString);
       menu_entries_append_enum(list,
