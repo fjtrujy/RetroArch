@@ -30,6 +30,7 @@
 
 #define NTSC_WIDTH  640
 #define NTSC_HEIGHT 448
+#define HIRES_MODE
 
 typedef struct ps2_video
 {
@@ -58,6 +59,7 @@ typedef struct ps2_video
    GSTEXTURE *displayTexture;
 } ps2_video_t;
 
+#ifndef HIRES_MODE
 static int vsync_sema_id;
 
 /* PRIVATE METHODS */
@@ -96,14 +98,19 @@ static void gsKit_flip(GSGLOBAL *gsGlobal)
 
    gsKit_setactive(gsGlobal);
 }
+#endif
 
 static GSGLOBAL *init_GSGlobal(void)
 {
+#ifdef HIRES_MODE
+   int iPassCount;
+#else
    ee_sema_t sema;
    sema.init_count = 0;
    sema.max_count = 1;
    sema.option = 0;
    vsync_sema_id = CreateSema(&sema);
+#endif
 
    //  printf("%s\n", __FUNCTION__);
 
@@ -113,6 +120,32 @@ static GSGLOBAL *init_GSGlobal(void)
    /* Initialize the DMAC */
 	dmaKit_chan_init(DMA_CHANNEL_GIF);
 
+#ifdef HIRES_MODE
+   GSGLOBAL *gsGlobal        = gsKit_hires_init_global();
+
+   #if 0
+   // 480p
+   gsGlobal->Mode            = GS_MODE_DTV_480P;
+   gsGlobal->Interlace       = GS_NONINTERLACED;
+   gsGlobal->Field           = GS_FRAME;
+   gsGlobal->Width           = NTSC_WIDTH;
+   gsGlobal->Height          = NTSC_HEIGHT;
+   gsGlobal->PSM             = GS_PSM_CT32;
+   iPassCount                = 2;
+   #endif
+
+   #if 1
+   // 720p
+   gsGlobal->Mode            = GS_MODE_DTV_720P;
+   gsGlobal->Interlace       = GS_NONINTERLACED;
+   gsGlobal->Field           = GS_FRAME;
+   gsGlobal->Width           = 1280;
+   gsGlobal->Height          = 720;
+   gsGlobal->PSM             = GS_PSM_CT16S;
+   iPassCount                = 3;
+   #endif
+
+#else
    GSGLOBAL *gsGlobal        = gsKit_init_global();
 
    gsGlobal->Mode            = GS_MODE_NTSC;
@@ -121,6 +154,8 @@ static GSGLOBAL *init_GSGlobal(void)
    gsGlobal->Width           = NTSC_WIDTH;
    gsGlobal->Height          = NTSC_HEIGHT;
    gsGlobal->PSM             = GS_PSM_CT32;
+#endif
+
    gsGlobal->PSMZ            = GS_PSMZ_16S;
    gsGlobal->DoubleBuffering = GS_SETTING_ON;
    gsGlobal->ZBuffering      = GS_SETTING_OFF;
@@ -131,15 +166,28 @@ static GSGLOBAL *init_GSGlobal(void)
    gsGlobal->Test->AREF = 0x00;
    gsGlobal->Test->AFAIL = 0; // KEEP
 
+   // Coordinate space ranges from 0 to 4096 pixels
+   // Center the buffer in the coordinate space
+   gsGlobal->OffsetX = ((4096 - gsGlobal->Width) / 2) * 16;
+   gsGlobal->OffsetY = ((4096 - gsGlobal->Height) / 2) * 16;
+
+#ifdef HIRES_MODE
+   gsKit_hires_init_screen(gsGlobal, iPassCount);
+#else
    gsKit_init_screen(gsGlobal);
    gsKit_mode_switch(gsGlobal, GS_ONESHOT);
+#endif
 
    gsKit_set_test(gsGlobal, GS_ZTEST_OFF);
    gsKit_set_test(gsGlobal, GS_ATEST_OFF);
    gsKit_set_primalpha(gsGlobal, GS_SETREG_ALPHA(0, 1, 0, 1, 0), 0);
 
+#ifdef HIRES_MODE
+   gsKit_hires_flip(gsGlobal);
+#else
    gsKit_clear(gsGlobal, GS_BLACK);
    gsKit_flip(gsGlobal);
+#endif
 
    return gsGlobal;
 }
@@ -148,7 +196,11 @@ static void deinit_GSGlobal(GSGLOBAL *gsGlobal)
 {
    gsKit_clear(gsGlobal, GS_BLACK);
    gsKit_vram_clear(gsGlobal);
+#ifdef HIRES_MODE
+   gsKit_hires_deinit_global(gsGlobal);
+#else
    gsKit_deinit_global(gsGlobal);
+#endif
 }
 
 static GSTEXTURE *prepare_new_texture(void)
@@ -171,7 +223,9 @@ static void init_ps2_video(ps2_video_t *ps2)
    ps2->vp.full_width       = ps2->gsGlobal->Width;
    ps2->vp.full_height      = ps2->gsGlobal->Height;
 
+#ifndef HIRES_MODE
    ps2->vsync_callback_id = gsKit_add_vsync_handler(vsync_handler);
+#endif
    ps2->menuTexture = prepare_new_texture();
    ps2->coreTexture = prepare_new_texture();
    ps2->displayTexture = prepare_new_texture();
@@ -248,18 +302,24 @@ static void refreshScreen(ps2_video_t *ps2)
    // printf("%s\n", __FUNCTION__);
    // printf("==========================================\n");
 
+   // Sync and flip
+#ifdef HIRES_MODE
+   if (ps2->vsync)
+      gsKit_hires_sync(ps2->gsGlobal);
+   gsKit_hires_flip(ps2->gsGlobal);
+#else
    // Draw everything
    gsKit_set_finish(ps2->gsGlobal);
    gsKit_queue_exec(ps2->gsGlobal);
    gsKit_finish();
 
-   // Let texture manager know we're moving to the next frame
-   gsKit_TexManager_nextFrame(ps2->gsGlobal);
-
-   // Sync and flip
    if (ps2->vsync)
       gsKit_sync(ps2->gsGlobal);
    gsKit_flip(ps2->gsGlobal);
+#endif
+
+   // Let texture manager know we're moving to the next frame
+   gsKit_TexManager_nextFrame(ps2->gsGlobal);
 }
 
 static void *ps2_gfx_init(const video_info_t *video,
@@ -401,11 +461,15 @@ static void ps2_gfx_free(void *data)
    free(ps2->menuTexture);
    free(ps2->coreTexture);
 
+#ifndef HIRES_MODE
    gsKit_remove_vsync_handler(ps2->vsync_callback_id);
+#endif
    deinit_GSGlobal(ps2->gsGlobal);
 
+#ifndef HIRES_MODE
    if (vsync_sema_id >= 0)
       DeleteSema(vsync_sema_id);
+#endif
 
    free(data);
 }
