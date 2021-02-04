@@ -53,17 +53,23 @@ static void* ps2_font_init_font(void* data, const char* font_path,
    font->texture = (GSTEXTURE*)calloc(1, sizeof(GSTEXTURE));
    font->texture->Width = atlas->width;
    font->texture->Height = atlas->height;
-   font->texture->PSM = GS_PSM_CT32;
+   font->texture->PSM = GS_PSM_T8;
+   font->texture->ClutPSM = GS_PSM_CT32;
    font->texture->Filter = GS_FILTER_NEAREST;
 
-   int textSize = atlas->width * atlas->height * sizeof(uint32_t);
-   uint32_t *tex32 = malloc(textSize);
-   for (j = 0; j <  atlas->width * atlas->height; j++ ) {
-      uint32_t currentColor = atlas->buffer[j];
-         uint8_t component = currentColor & 0x000000FF;
-      tex32[j] = component << 24 | component << 16 | component << 8 | component;
-   }
-   font->texture->Mem = (u32 *)tex32;
+   // Convert to 8bit texture
+   int textSize = gsKit_texture_size_ee(atlas->width, atlas->height, GS_PSM_T8);
+   uint8_t *tex8 = malloc(textSize);
+   for (j = 0; j <  atlas->width * atlas->height; j++ )
+      tex8[j] = atlas->buffer[j] & 0x000000FF;
+   font->texture->Mem = (u32 *)tex8;
+
+   // Create 8bit CLUT
+   int clutSize = gsKit_texture_size_ee(16, 16, GS_PSM_CT32);
+   uint32_t *clut32 = malloc(clutSize);
+   for (j = 0; j < 256; j++ )
+      clut32[j] = 0x01010101 * j;
+   font->texture->Clut = (u32 *)clut32;
 
    return font;
 }
