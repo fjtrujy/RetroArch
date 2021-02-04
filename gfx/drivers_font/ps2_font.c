@@ -154,7 +154,6 @@ static void ps2_font_render_line(
    colorG = (int)(((color & 0x0000FF00) >> 8)*128.f);
    colorB = (int)(((color & 0x000000FF) >> 0)*128.f);
 
-   gsKit_TexManager_bind(ps2->gsGlobal, font->texture);
    for (i = 0; i < msg_len; i++)
    {
       int off_x, off_y, tex_x, tex_y, width, height;
@@ -320,6 +319,8 @@ static void ps2_font_render_msg(
 
    if (drop_x || drop_y)
       max_glyphs    *= 2;
+
+   gsKit_TexManager_bind(ps2->gsGlobal, font->texture);
 
    if (drop_x || drop_y)
    {
