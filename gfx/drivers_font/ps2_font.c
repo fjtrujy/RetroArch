@@ -84,11 +84,14 @@ static void ps2_font_free_font(void* data, bool is_threaded)
    if (font->font_driver && font->font_data)
       font->font_driver->free(font->font_data);
 
+   if (font->texture->Clut)
+      free(font->texture->Clut);
+
    if (font->texture->Mem)
       free(font->texture->Mem);
 
    if (font->texture)
-      free(font ->texture);
+      free(font->texture);
 }
 
 static int ps2_font_get_message_width(void* data, const char* msg,
