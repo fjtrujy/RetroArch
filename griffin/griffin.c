@@ -901,7 +901,7 @@ AUDIO
 #elif defined(EMSCRIPTEN)
 #include "../audio/drivers/rwebaudio.c"
 #elif defined(PSP) || defined(VITA) || defined(ORBIS)
-#include "../audio/drivers/psp_audio.c"
+// #include "../audio/drivers/psp_audio.c"
 #elif defined(PS2)
 #include "../audio/drivers/ps2_audio.c"
 #elif defined(_3DS)

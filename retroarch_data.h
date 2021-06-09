@@ -491,7 +491,7 @@ static const audio_driver_t *audio_drivers[] = {
    &audio_rwebaudio,
 #endif
 #if defined(PSP) || defined(VITA) || defined(ORBIS)
-  &audio_psp,
+//   &audio_psp,
 #endif
 #if defined(PS2)
   &audio_ps2,
