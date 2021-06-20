@@ -109,7 +109,10 @@ static void reset_IOP()
 #endif
 
    while(!SifIopSync()){};
+   // Init RPC & CMD
    SifInitRpc(0);
+   SifInitIopHeap();
+   SifLoadFileInit();
    sbv_patch_enable_lmb();
    sbv_patch_disable_prefix_check();
 }
