@@ -64,7 +64,7 @@ static void* ps2_font_init_font(void* data, const char* font_path,
       tex8[j] = atlas->buffer[j] & 0x000000FF;
    font->texture->Mem = (u32 *)tex8;
 
-   // Create 8bit CLUT
+   // Create 32bit CLUT
    int clutSize = gsKit_texture_size_ee(16, 16, GS_PSM_CT32);
    uint32_t *clut32 = malloc(clutSize);
    for (j = 0; j < 256; j++ )

@@ -410,23 +410,32 @@ static bool ps2_gfx_set_shader(void *data,
 static uintptr_t ps2_load_texture(void *video_data, void *data,
       bool threaded, enum texture_filter_type filter_type)
 {
+   /* PS2 in order to save RAM just support monocrome images,
+   this is why we use CLUT in the GSTexture */
    unsigned int stride, pitch, j, filter;
    const uint32_t *frame32        = NULL;
    struct texture_image *image    = (struct texture_image*)data;
-
-   filter = ((filter_type == TEXTURE_FILTER_MIPMAP_LINEAR) ||
+   GSTEXTURE *texture = prepare_new_texture();
+   texture->Width = image->width;
+   texture->Height = image->height;
+   texture->PSM = GS_PSM_T8;
+   texture->ClutPSM = GS_PSM_CT32;
+   texture->Filter = ((filter_type == TEXTURE_FILTER_MIPMAP_LINEAR) ||
       (filter_type == TEXTURE_FILTER_LINEAR)) ? GS_FILTER_LINEAR : GS_FILTER_NEAREST;
 
-   int textSize = image->width * image->height * 4;
-   GSTEXTURE *texture = prepare_new_texture();
-   uint32_t *tex32 = malloc(textSize);
+   // Convert to 8bit texture
+   int textSize = gsKit_texture_size_ee(image->width, image->height, GS_PSM_T8);
+   uint8_t *tex8 = malloc(textSize);
+   for (j = 0; j <  image->width * image->height; j++ )
+      tex8[j] = (image->pixels[j] >> 24) & 0xFF;
+   texture->Mem = (u32 *)tex8;
 
-   for (j = 0; j <  image->width * image->height; j++ ) {
-      uint32_t currentColor = image->pixels[j];
-      tex32[j] = ((currentColor >> 16) & 0x000000FF) | (currentColor & 0xFF00FF00) | ((currentColor << 16) & 0x00FF0000);
-   }
-
-   set_texture(texture, tex32, image->width, image->height, GS_PSM_CT32, filter);
+   // Create 32bit CLUT
+   int clutSize = gsKit_texture_size_ee(16, 16, GS_PSM_CT32);
+   uint32_t *clut32 = malloc(clutSize);
+   for (j = 0; j < 256; j++ )
+      clut32[j] = 0x01010101 * j;
+   texture->Clut = (u32 *)clut32;
 
    return (uintptr_t)texture;
 }
@@ -441,6 +450,7 @@ static void ps2_unload_texture(void *data, bool threaded,
       return;
    gsKit_TexManager_invalidate(ps2->gsGlobal, gsTexture);
    free(gsTexture->Mem);
+   free(gsTexture->Clut);
    free(gsTexture);
 }
 
