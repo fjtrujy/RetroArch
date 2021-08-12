@@ -108,31 +108,18 @@ static void gfx_display_ps2_draw(gfx_display_ctx_draw_t *draw,
    ps2->gsGlobal->PrimAlphaEnable = GS_SETTING_ON;
    gsKit_set_test(ps2->gsGlobal, GS_ATEST_ON);
 
-    if (texture->Width > 1 || texture->Height > 1) {
-      // This is a texture
-      gsKit_TexManager_bind(ps2->gsGlobal, texture);
-      gsKit_prim_sprite_texture(ps2->gsGlobal, texture,
-         draw->x,                /* X1 */
-         ps2->gsGlobal->Height - draw->y,                /* Y1 */
-         0,                      /* U1 */
-         texture->Height,                      /* V1 */
-         draw->x + draw->width,  /* X2 */
-         ps2->gsGlobal->Height - (draw->y + draw->height), /* Y2 */
-         texture->Width,         /* U2 */
-         0,        /* V2 */
-         4,                      /* Z  */
-         GS_SETREG_RGBAQ(colorR,colorG,colorB,colorA,0x00));
-    } else {
-      //   This is not a texture, its a colored rectangle
-      //   Draw faster using a quad
-      gsKit_prim_sprite(ps2->gsGlobal,
-         draw->x,                /* X1 */
-         ps2->gsGlobal->Height - draw->y,                /* Y1 */
-         draw->x + draw->width,  /* X3 */
-         ps2->gsGlobal->Height - (draw->y + draw->height), /* Y3 */
-         4,                      /* Z  */
-         GS_SETREG_RGBAQ(colorR,colorG,colorB,colorA,0x00));
-    }
+   gsKit_TexManager_bind(ps2->gsGlobal, texture);
+   gsKit_prim_sprite_texture(ps2->gsGlobal, texture,
+      draw->x,                /* X1 */
+      ps2->gsGlobal->Height - draw->y,                /* Y1 */
+      0,                      /* U1 */
+      texture->Height,                      /* V1 */
+      draw->x + draw->width,  /* X2 */
+      ps2->gsGlobal->Height - (draw->y + draw->height), /* Y2 */
+      texture->Width,         /* U2 */
+      0,        /* V2 */
+      4,                      /* Z  */
+      GS_SETREG_RGBAQ(colorR,colorG,colorB,colorA,0x00));
 }
 
 static bool gfx_display_ps2_font_init_first(
