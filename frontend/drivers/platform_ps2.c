@@ -333,6 +333,10 @@ static void frontend_ps2_init(void *data)
    init_scr();
    scr_printf("\n\nStarting RetroArch...\n");
 #endif
+   /* Try to use the 64 MB RAM for Desr machines */
+   SetMemoryMode(0); 
+   _InitTLB();
+
    load_modules();
 
    poweroffInit();
