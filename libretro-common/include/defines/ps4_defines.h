@@ -22,9 +22,8 @@
 #define	ORBISPAD_TOUCH_PAD	  0x00100000
 #define	ORBISPAD_INTERCEPTED	0x80000000
 
-#if defined(HAVE_OOSDK) || defined(HAVE_LIBORBIS)
+#if defined(HAVE_OOSDK) || defined(HAVE_LIBORBIS) || defined(ORBIS)
 #define SceUID uint32_t
-#define SceKernelModule OrbisKernelModule
 #define SceKernelStat OrbisKernelStat
 #define SCE_KERNEL_PRIO_FIFO_DEFAULT 700
 #define SCE_AUDIO_OUT_PORT_TYPE_MAIN   0

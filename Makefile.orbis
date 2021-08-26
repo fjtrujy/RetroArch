@@ -1,9 +1,9 @@
-TARGET		    := retroarch_ps4
+TARGET		    := retroarch_orbis
 DEBUG               ?= 0
 GRIFFIN_BUILD        = 0
 WHOLE_ARCHIVE_LINK   = 0
 
-HAVE_STATIC_DUMMY ?= 0
+HAVE_STATIC_DUMMY ?= 1
 HAVE_GLES3 ?= 0
 HAVE_MOUSE ?= 0
 HAVE_KEYBOARD ?= 0
@@ -17,14 +17,13 @@ PC_DEVELOPMENT_UDP_PORT	   =
 OBJ :=
 DEFINES :=
 
-OBJ +=
-#memory/ps4/user_mem.o \
-#			memory/ps4/user_new.o \
-			input/drivers/ps4_input.o \
-			input/drivers_joypad/ps4_joypad.o \
-			audio/drivers/psp_audio.o \
-			gfx/drivers_context/orbis_ctx.o \
-			frontend/drivers/platform_orbis.o
+# OBJ += memory/ps4/user_mem.o \
+# 	memory/ps4/user_new.o \
+# 	input/drivers/ps4_input.o \
+# 	input/drivers_joypad/ps4_joypad.o \
+# 	audio/drivers/psp_audio.o \
+# 	gfx/drivers_context/orbis_ctx.o \
+# 	frontend/drivers/platform_orbis.o
 
 ifeq ($(HAVE_GLES3),1)
   DEFINES += -DHAVE_OPENGLES3
@@ -64,7 +63,7 @@ else
 	HAVE_OPENGL  					:= 1
 	HAVE_OPENGLES  				:= 1
 	HAVE_OPENGLES2  			:= 1
-	HAVE_NETWORKING				:= 1
+	HAVE_NETWORKING				:= 0
 	HAVE_SOCKET_LEGACY		:= 1
 	HAVE_MENU							:= 1
 	HAVE_MENU_COMMON			:= 1
@@ -133,7 +132,7 @@ INCDIRS += -I. -Idefines -Imemory/ps4 -Ideps -Ideps/7zip -Ideps/libz -Ilibretro-
 					 -Ilibretro-common/include/compat/zlib -Ideps/rcheevos/include -I$(ORBISDEV)/usr/include -I$(ORBISDEV)/usr/include/c++/v1 -I$(ORBISDEV)/usr/include/orbis
 
 ARCHFLAGS += -DORBIS -D__ORBIS__
-DEFINES += -DHAVE_MAIN -DRARCH_INTERNAL -DRARCH_CONSOLE -DHAVE_FILTERS_BUILTIN \
+DEFINES += -DRARCH_INTERNAL -DRARCH_CONSOLE -DHAVE_FILTERS_BUILTIN \
 					 -DHAVE_XMB -DHAVE_RGUI -DHAVE_OZONE \
 					 -DHAVE_ONLINE_UPDATER -DHAVE_UPDATE_CORES -DHAVE_UPDATE_ASSETS -D__PS4__ -D_BSD_SOURCE
 

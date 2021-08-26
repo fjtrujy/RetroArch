@@ -34,12 +34,8 @@
 #include <pspkernel.h>
 #include <pspaudio.h>
 #elif defined(ORBIS)
-#if defined(HAVE_OOSDK)
-#include <orbis/AudioOut.h>
-#else
-#include <audioout.h>
-#endif
-#include "../../defines/ps4_defines.h"
+#include <libSceAudioOut.h>
+#include <defines/ps4_defines.h>
 #endif
 
 #include "../audio_driver.h"
@@ -53,8 +49,6 @@ typedef struct psp_audio
    slock_t *fifo_lock;
    scond_t *cond;
    slock_t *cond_lock;
-
-   SceUID thread;
 
    int port;
 

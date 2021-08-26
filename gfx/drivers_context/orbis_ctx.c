@@ -18,6 +18,7 @@
 #include <string/stdstring.h>
 #include <compat/strl.h>
 #include <piglet.h>
+#include <orbis/libkernel.h>
 
 #ifdef HAVE_CONFIG_H
 #include "../../config.h"
@@ -30,7 +31,7 @@
 #include "../common/orbis_common.h"
 #include "../../frontend/frontend_driver.h"
 #include "../../configuration.h"
-#include "../../defines/ps4_defines.h"
+#include <defines/ps4_defines.h>
 
 /* TODO/FIXME - static globals */
 static enum gfx_ctx_api ctx_orbis_api = GFX_CTX_OPENGL_API;
@@ -56,7 +57,7 @@ void orbis_ctx_destroy(void *data)
 static void orbis_ctx_get_video_size(void *data,
       unsigned *width, unsigned *height)
 {
-   orbis_ctx_data_t 
+   orbis_ctx_data_t
       *ctx_orbis = (orbis_ctx_data_t *)data;
 
    *width        = ATTR_ORBISGL_WIDTH;
@@ -98,11 +99,11 @@ static void *orbis_ctx_init(void *video_driver)
    memset(&ctx_orbis->pgl_config, 0, sizeof(ctx_orbis->pgl_config));
 
    {
-      ctx_orbis->pgl_config.size                    = 
+      ctx_orbis->pgl_config.size                    =
          sizeof(ctx_orbis->pgl_config);
-      ctx_orbis->pgl_config.flags                   = 
-           SCE_PGL_FLAGS_USE_COMPOSITE_EXT 
-         | SCE_PGL_FLAGS_USE_FLEXIBLE_MEMORY 
+      ctx_orbis->pgl_config.flags                   =
+           SCE_PGL_FLAGS_USE_COMPOSITE_EXT
+         | SCE_PGL_FLAGS_USE_FLEXIBLE_MEMORY
          | 0x60;
       ctx_orbis->pgl_config.processOrder            = 1;
       ctx_orbis->pgl_config.systemSharedMemorySize =  0x1000000;
@@ -177,7 +178,7 @@ static bool orbis_ctx_set_video_mode(void *data,
       bool fullscreen)
 {
     /* Create an EGL rendering context */
-    static const EGLint 
+    static const EGLint
        contextAttributeList[]       =
         {
 #if defined(HAVE_OPENGLES3)

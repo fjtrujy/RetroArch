@@ -45,7 +45,14 @@
 #include <debugnet.h>
 #include <orbisFile.h>
 #endif
-#include "../../defines/ps4_defines.h"
+
+#include <signal.h>
+#include <unistd.h>
+#include <orbis/libkernel.h>
+#include <libSceUserService.h>
+#include <libSceSystemService.h>
+#include <defines/ps4_defines.h>
+
 #include "../../memory/ps4/user_mem.h"
 
 #include <pthread.h>
@@ -90,13 +97,6 @@
 #define MODULE_PATH "/data/self/system/common/lib/"
 #define MODULE_PATH_EXT "/app0/sce_module/"
 
-#if defined(IS_SALAMANDER)
-int salamander_main(int argc, char **argv);
-#else
-int rarch_main(int argc, char *argv[], void *data);
-void main_exit(void *args);
-#endif
-
 #if defined(HAVE_LIBORBIS)
 typedef struct OrbisGlobalConf
 {
@@ -120,105 +120,6 @@ SceKernelModule s_piglet_module;
 SceKernelModule s_shacc_module;
 
 static enum frontend_fork orbis_fork_mode = FRONTEND_FORK_NONE;
-
-#ifdef __cplusplus
-extern "C"
-#endif
-int main(int argc, char *argv[])
-{
-   int ret;
-   char *modules[] = {
-     "libSceSysCore",
-     "libSceMbus",
-     "libSceIpmi",
-     "libSceSystemService",
-     "libSceUserService",
-     "libSceNetCtl",
-     "libSceNet",
-     "libSceAudioOut",
-     "libScePad",
-#if defined(HAVE_MOUSE)
-     "libSceMouse",
-#endif
-#if defined(HAVE_KEYBOARD)
-     "libSceKeyboard",
-#endif
-   };
-
-#if defined(HAVE_OOSDK)
-   _Stdin = *fdopen(STDIN_FILENO, "r");
-   _Stderr = *fdopen(STDERR_FILENO, "w");
-   _Stdout = *fdopen(STDOUT_FILENO, "w");
-#endif
-   char file_path[PATH_MAX_LENGTH];
-   char module_path[PATH_MAX_LENGTH];
-   int len = sizeof(modules) / sizeof(modules[0]);
-   const char *sandbox_word = sceKernelGetFsSandboxRandomWord();
-   if (sandbox_word)
-      snprintf(module_path, sizeof(module_path), "/%s/common/lib", sandbox_word);
-   else
-      snprintf(module_path, sizeof(module_path), "/%s/common/lib", "system");
-
-   for (int i = 0; i < len; i++)
-   {
-       snprintf(file_path, sizeof(file_path), "%s/%s.sprx", module_path, modules[i]);
-       sceKernelLoadStartModule(file_path, 0, NULL, 0, NULL, &ret);
-   }
-
-   // Try 2 paths for libScePigletv2VSH and libSceShaccVSH
-   s_piglet_module = sceKernelLoadStartModule(MODULE_PATH "libScePigletv2VSH.sprx", 0, NULL, 0, NULL, &ret);
-   if(s_piglet_module < 0)
-   {
-      s_piglet_module = sceKernelLoadStartModule(MODULE_PATH_EXT "libScePigletv2VSH.sprx", 0, NULL, 0, NULL, &ret);
-      if (s_piglet_module < 0)
-        return -1;
-   }
-
-   s_shacc_module = sceKernelLoadStartModule(MODULE_PATH "libSceShaccVSH.sprx", 0, NULL, 0, NULL, &ret);
-   if(s_shacc_module < 0)
-   {
-      s_shacc_module = sceKernelLoadStartModule(MODULE_PATH_EXT "libSceShaccVSH.sprx", 0, NULL, 0, NULL, &ret);
-      if (s_shacc_module < 0)
-        return -1;
-   }
-
-   sceSystemServiceHideSplashScreen();
-
-#if defined(HAVE_LIBORBIS)
-	uintptr_t intptr=0;
-	sscanf(argv[1],"%p",&intptr);
-	myConf=(OrbisGlobalConf *)intptr;
-	ret=ps4LinkInitWithConf(myConf->confLink);
-	if(!ret)
-	{
-		ps4LinkFinish();
-		return -1;
-	}
-#elif defined(HAVE_OOSDK)
-   argv = &(argv[1]);
-   argc = argc - 1;
-#endif
-
-#if defined(IS_SALAMANDER)
-   salamander_main(argc, argv);
-#else
-   rarch_main(argc, argv, NULL);
-   int status;
-   for (;;)
-   {
-      status = runloop_iterate();
-      task_queue_check();
-      if (status == -1)
-      {
-         break;
-      }
-   }
-   main_exit(NULL);
-#endif
-
-   kill(getpid(), SIGTERM);
-   return 0;
-}
 
 #if defined(HAVE_TAUON_SDK)
 void catchReturnFromMain(int exit_code)
@@ -266,10 +167,10 @@ static void frontend_orbis_get_env(int *argc, char *argv[],
    orbisPadInitWithConf(myConf->confPad);
    scePadClose(myConf->confPad->padHandle);
 #else
-   SceUserServiceInitializeParams param;
-   memset(&param, 0, sizeof(param));
-   param.priority = SCE_KERNEL_PRIO_FIFO_DEFAULT;
-   sceUserServiceInitialize(&param);
+   // SceUserServiceInitializeParams param;
+   // memset(&param, 0, sizeof(param));
+   // param.priority = SCE_KERNEL_PRIO_FIFO_DEFAULT;
+   // sceUserServiceInitialize(&param);
 #endif
 
    strlcpy(eboot_path, EBOOT_PATH, sizeof(eboot_path));
@@ -392,10 +293,10 @@ static void frontend_orbis_exec(const char *path, bool should_load_game)
    int   args = 0;
 
 #if !defined(HAVE_LIBORBIS)
-   SceKernelStat sb;
-   sceKernelStat(path, &sb);
-   if (!(sb.st_mode & S_IXUSR))
-      sceKernelChmod(path, S_IRWXU);
+   // SceKernelStat sb;
+   // sceKernelStat(path, &sb);
+   // if (!(sb.st_mode & S_IXUSR))
+   //    sceKernelChmod(path, S_IRWXU);
 #endif
 
 #ifndef IS_SALAMANDER
@@ -410,12 +311,12 @@ static void frontend_orbis_exec(const char *path, bool should_load_game)
       };
       args = 2;
       RARCH_LOG("Attempt to load executable: %d [%s].\n", args, argp);
-      ret = sceSystemServiceLoadExec(path, (char *const *)argp);
+      // ret = sceSystemServiceLoadExec(path, (char *const *)argp);
    }
    else
 #endif
    {
-      ret =  sceSystemServiceLoadExec(path, NULL);
+      // ret =  sceSystemServiceLoadExec(path, NULL);
    }
    //RARCH_LOG("Attempt to load executable: [%d].\n", ret);
 }
@@ -515,19 +416,19 @@ static int frontend_orbis_parse_drive_list(void *data, bool load_content)
    return 0;
 }
 
-static size_t frontend_orbis_get_mem_total(void)
-{
-  size_t max_mem = 0, cur_mem = 0;
-  get_user_mem_size(&max_mem, &cur_mem);
-  return max_mem;
-}
+// static size_t frontend_orbis_get_mem_total(void)
+// {
+//   size_t max_mem = 0, cur_mem = 0;
+//   get_user_mem_size(&max_mem, &cur_mem);
+//   return max_mem;
+// }
 
-static size_t frontend_orbis_get_mem_used(void)
-{
-  size_t max_mem = 0, cur_mem = 0;
-  get_user_mem_size(&max_mem, &cur_mem);
-  return cur_mem;
-}
+// static size_t frontend_orbis_get_mem_used(void)
+// {
+//   size_t max_mem = 0, cur_mem = 0;
+//   get_user_mem_size(&max_mem, &cur_mem);
+//   return cur_mem;
+// }
 
 frontend_ctx_driver_t frontend_ctx_orbis = {
    frontend_orbis_get_env,
@@ -549,8 +450,8 @@ frontend_ctx_driver_t frontend_ctx_orbis = {
    frontend_orbis_get_arch,
    NULL,
    frontend_orbis_parse_drive_list,
-   frontend_orbis_get_mem_total,
-   frontend_orbis_get_mem_used,
+   NULL, /* TODO: frontend_orbis_get_mem_total,*/
+   NULL, /* TODO: frontend_orbis_get_mem_used,*/
    NULL,                         /* install_signal_handler */
    NULL,                         /* get_sighandler_state */
    NULL,                         /* set_sighandler_state */
