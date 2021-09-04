@@ -3,7 +3,7 @@ DEBUG               ?= 0
 GRIFFIN_BUILD        = 0
 WHOLE_ARCHIVE_LINK   = 0
 
-HAVE_STATIC_DUMMY ?= 1
+HAVE_STATIC_DUMMY ?= 0
 HAVE_GLES3 ?= 0
 HAVE_MOUSE ?= 0
 HAVE_KEYBOARD ?= 0
@@ -168,7 +168,7 @@ LIBS	:= $(WHOLE_START) -lretro_ps4 $(WHOLE_END) $(PS4_LIBS)
 
 CFLAGS   := -cc1 -triple x86_64-scei-ps4-elf -munwind-tables -mcmodel=large -Wno-zero-length-array -Wno-format-pedantic -emit-obj  -std=c11 $(ARCHFLAGS) $(INCDIRS) $(DEFINES)
 CXXFLAGS := -cc1 -triple x86_64-scei-ps4-elf -munwind-tables -Wall -pedantic -m64 -mcmodel=large -Wno-zero-length-array -Wno-format-pedantic -emit-obj -std=c++11 $(ARCHFLAGS) $(INCDIRS) $(DEFINES)
-LDFLAGS  :=    -isysroot $(ORBISDEV)/usr -L. -Llib -Wl,--gc-sections -Wl,-z -Wl,max-page-size=0x4000 -Wl,--dynamic-linker="/libexec/ld-elf.so.1" -Wl,-pie -Wl,--eh-frame-hdr -L$(ORBISDEV)/usr/lib -target x86_64-scei-ps4-elf -T $(ORBISDEV)/linker.x
+LDFLAGS  :=    -isysroot $(ORBISDEV)/usr -L. -Llib -Wl,--gc-sections -Wl,-z -Wl,max-page-size=0x4000 -Wl,--dynamic-linker="/libexec/ld-elf.so.1" -Wl,-pie -Wl,--eh-frame-hdr -L$(ORBISDEV)/usr/lib -target x86_64-scei-ps4-elf -T $(ORBISDEV)/linker.x $(PS4_LIBS)
 ARFLAGS  := rcs
 
 ifeq ($(DEBUG), 1)
@@ -196,7 +196,7 @@ all: $(TARGETS)
 	$(AS) -o $@ $<
 
 $(TARGET).elf: $(OBJ)
-	$(LD) $(ORBISDEV)/crt0.s $(OBJ)  $(LDFLAGS) $(PS4_LIBS) -o $(TARGET).elf
+	$(LD) $(ORBISDEV)/crt0.s $(OBJ)  $(LDFLAGS) $(LIBS) -o $(TARGET).elf
 
 $(TARGET).a: $(OBJ)
 	$(AR) $(ARFLAGS)  $(TARGET).a  $(OBJ)
