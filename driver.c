@@ -488,18 +488,18 @@ void drivers_init(
    }
 
    /* Initialize audio driver */
-   if (flags & DRIVER_AUDIO_MASK)
-   {
-      audio_driver_init_internal(
-            settings,
-            audio_st->callback.callback != NULL);
-      if (  audio_st->current_audio &&
-            audio_st->current_audio->device_list_new &&
-            audio_st->context_audio_data)
-         audio_st->devices_list = (struct string_list*)
-            audio_st->current_audio->device_list_new(
-                  audio_st->context_audio_data);
-   }
+   // if (flags & DRIVER_AUDIO_MASK)
+   // {
+   //    audio_driver_init_internal(
+   //          settings,
+   //          audio_st->callback.callback != NULL);
+   //    if (  audio_st->current_audio &&
+   //          audio_st->current_audio->device_list_new &&
+   //          audio_st->context_audio_data)
+   //       audio_st->devices_list = (struct string_list*)
+   //          audio_st->current_audio->device_list_new(
+   //                audio_st->context_audio_data);
+   // }
 
    /* Regular display refresh rate startup autoswitch based on content av_info */
    if (flags & (DRIVER_VIDEO_MASK | DRIVER_AUDIO_MASK))

@@ -3796,8 +3796,6 @@ static char *get_tmpdir_alloc(const char *override_dir)
 #else
 #if defined ANDROID
    src                = override_dir;
-#elif defined(ORBIS)
-   src                = "/data/retroarch/temp";
 #else
    {
       char *tmpdir    = getenv("TMPDIR");

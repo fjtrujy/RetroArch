@@ -51,6 +51,7 @@
 #include <orbis/libkernel.h>
 #include <libSceUserService.h>
 #include <libSceSystemService.h>
+#include <libSceSysmodule.h>
 #include <defines/ps4_defines.h>
 
 #include "../../memory/ps4/user_mem.h"
@@ -264,12 +265,6 @@ static void frontend_orbis_get_env(int *argc, char *argv[],
 static void frontend_orbis_deinit(void *data)
 {
    (void)data;
-#ifndef IS_SALAMANDER
-   verbosity_disable();
-#ifdef HAVE_FILE_LOGGER
-   retro_main_log_file_deinit();
-#endif
-#endif
 #if defined(HAVE_LIBORBIS)
 	ps4LinkFinish();
 #endif
@@ -283,7 +278,26 @@ static void frontend_orbis_shutdown(bool unused)
 
 static void frontend_orbis_init(void *data)
 {
+   int ret=initOrbisLinkAppVanillaGl();
 
+   sceSystemServiceHideSplashScreen();
+
+
+   logger_init();
+   RARCH_LOG("[%s][%s][%d] Hello from retroarch level info\n",__FILE__,__PRETTY_FUNCTION__,__LINE__);
+   RARCH_ERR("[%s][%s][%d] Hello from retroarch level error\n",__FILE__,__PRETTY_FUNCTION__,__LINE__);
+   RARCH_WARN("[%s][%s][%d] Hello from retroarch level warning no warning level on debugnet yet\n",__FILE__,__PRETTY_FUNCTION__,__LINE__);
+   RARCH_DBG("[%s][%s][%d] Hello from retroarch level debug\n",__FILE__,__PRETTY_FUNCTION__,__LINE__);
+
+   ret=sceSysmoduleLoadModuleInternal(SCE_SYSMODULE_INTERNAL_AUDIO_OUT);
+    if (ret) 
+    {
+        RARCH_LOG("sceSysmoduleLoadModuleInternal(%s) failed: 0x%08X\n", "SCE_SYSMODULE_INTERNAL_AUDIO_OUT", ret);
+
+    }
+   
+
+   verbosity_enable();
 }
 
 static void frontend_orbis_exec(const char *path, bool should_load_game)
@@ -431,7 +445,7 @@ static int frontend_orbis_parse_drive_list(void *data, bool load_content)
 // }
 
 frontend_ctx_driver_t frontend_ctx_orbis = {
-   frontend_orbis_get_env,
+   NULL, /*frontend_orbis_get_env,*/
    frontend_orbis_init,
    frontend_orbis_deinit,
    frontend_orbis_exitspawn,
