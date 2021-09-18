@@ -3,7 +3,7 @@ DEBUG               ?= 0
 GRIFFIN_BUILD        = 0
 WHOLE_ARCHIVE_LINK   = 0
 
-HAVE_STATIC_DUMMY ?= 0
+HAVE_STATIC_DUMMY ?= 1
 HAVE_GLES3 ?= 0
 HAVE_MOUSE ?= 0
 HAVE_KEYBOARD ?= 0
@@ -166,7 +166,8 @@ PS4_LIBS += -lkernel_stub  -lSceLibcInternal_stub  -lSceSysmodule_stub -lSceSyst
 				-lScePigletv2VSH_stub -lSceVideoOut_stub -lSceGnmDriver_stub -lorbisGl2 -lorbis -lScePad_stub -lSceAudioOut_stub \
 				-lSceIme_stub -lSceNetCtl_stub 
 
-LIBS	:= $(WHOLE_START) -lretro_ps4 $(WHOLE_END) $(PS4_LIBS)
+# LIBS	:= $(WHOLE_START) -lretro_ps4 $(WHOLE_END) $(PS4_LIBS)
+LIBS	:= $(WHOLE_START) $(WHOLE_END) $(PS4_LIBS)
 
 CFLAGS   := -cc1 -triple x86_64-scei-ps4-elf -munwind-tables -mcmodel=large -Wno-zero-length-array -Wno-format-pedantic -emit-obj  -std=c11 $(ARCHFLAGS) $(INCDIRS) $(DEFINES)
 CXXFLAGS := -cc1 -triple x86_64-scei-ps4-elf -munwind-tables -Wall -pedantic -mcmodel=large -Wno-zero-length-array -Wno-format-pedantic -emit-obj -std=c++11 $(ARCHFLAGS) $(INCDIRS) $(DEFINES)
