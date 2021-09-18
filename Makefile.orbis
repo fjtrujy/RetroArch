@@ -161,13 +161,15 @@ ifeq ($(WHOLE_ARCHIVE_LINK), 1)
   WHOLE_END := --no-whole-archive
 endif
 
-PS4_LIBS += -lkernel_stub -lSceLibcInternal_stub  -lSceSysmodule_stub -lSceSystemService_stub \
-						-lSceUserService_stub -lSceAudioOut_stub -lScePad_stub -lSceNet_stub -lSceNetCtl_stub -lScePigletv2VSH_stub -lSceOrbisCompat_stub -lorbis -lSceIme_stub  
+
+PS4_LIBS += -lkernel_stub  -lSceLibcInternal_stub  -lSceSysmodule_stub -lSceSystemService_stub -lSceNet_stub -lSceUserService_stub \
+				-lScePigletv2VSH_stub -lSceVideoOut_stub -lSceGnmDriver_stub -lorbisGl2 -lorbis -lScePad_stub -lSceAudioOut_stub \
+				-lSceIme_stub -lSceNetCtl_stub 
 
 LIBS	:= $(WHOLE_START) -lretro_ps4 $(WHOLE_END) $(PS4_LIBS)
 
 CFLAGS   := -cc1 -triple x86_64-scei-ps4-elf -munwind-tables -mcmodel=large -Wno-zero-length-array -Wno-format-pedantic -emit-obj  -std=c11 $(ARCHFLAGS) $(INCDIRS) $(DEFINES)
-CXXFLAGS := -cc1 -triple x86_64-scei-ps4-elf -munwind-tables -Wall -pedantic -m64 -mcmodel=large -Wno-zero-length-array -Wno-format-pedantic -emit-obj -std=c++11 $(ARCHFLAGS) $(INCDIRS) $(DEFINES)
+CXXFLAGS := -cc1 -triple x86_64-scei-ps4-elf -munwind-tables -Wall -pedantic -mcmodel=large -Wno-zero-length-array -Wno-format-pedantic -emit-obj -std=c++11 $(ARCHFLAGS) $(INCDIRS) $(DEFINES)
 LDFLAGS  :=    -isysroot $(ORBISDEV)/usr -L. -Llib -Wl,--gc-sections -Wl,-z -Wl,max-page-size=0x4000 -Wl,--dynamic-linker="/libexec/ld-elf.so.1" -Wl,-pie -Wl,--eh-frame-hdr -L$(ORBISDEV)/usr/lib -target x86_64-scei-ps4-elf -T $(ORBISDEV)/linker.x
 ARFLAGS  := rcs
 
@@ -203,7 +205,7 @@ $(TARGET).a: $(OBJ)
 	#$(OO_PS4_TOOLCHAIN)/bin/$(CDIR)/create-eboot -in=$(TARGET).elf -out=$(TARGET).oelf --paid 0x3800000000000011
 
 install:
-	@cp homebrew.self /usr/local/orbisdev/git/ps4sh/bin/hostapp
+	@cp homebrew.self $(SELF_PATH_INSTALL)
 	@echo "Installed!"
 oelf:
 	@orbis-elf-create $(TARGET).elf homebrew.oelf
