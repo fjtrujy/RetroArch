@@ -126,6 +126,7 @@ static enum frontend_fork orbis_fork_mode = FRONTEND_FORK_NONE;
 #define MEM_ALIGN (16UL * 1024)
 
 const char *sceKernelGetFsSandboxRandomWord();
+int sceKernelReserveVirtualRange(void **, size_t, int, size_t);
 int sceKernelMapNamedSystemFlexibleMemory(void** addrInOut, size_t len, int prot, int flags, const char* name);
 typedef void* OrbisMspace;
 
