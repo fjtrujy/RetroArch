@@ -22,7 +22,7 @@ jobs:
     - name: Compile RA
       run: |
         export PATH=~/cli:$PATH # .net cli
-        make -f Makefile.orbis  -j8 && make -f Makefile.orbis oelf eboot
+        make -f Makefile.orbis -j$PROC_NR && make -f Makefile.orbis oelf eboot
 
     - name: Get short SHA
       id: slug
