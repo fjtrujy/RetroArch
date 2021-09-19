@@ -36,6 +36,7 @@
 #elif defined(ORBIS)
 #include <libSceAudioOut.h>
 #include <defines/ps4_defines.h>
+#include <verbosity.h>
 #endif
 
 #include "../audio_driver.h"
@@ -138,12 +139,20 @@ static void *psp_audio_init(const char *device,
    sceAudioOutInit();
 #endif
    /* Cache aligned, not necessary but helpful. */
-   psp->buffer      = (uint32_t*)
-      memalign(64, AUDIO_BUFFER_SIZE * sizeof(uint32_t));
+   psp->buffer      = (uint32_t*)malloc(AUDIO_BUFFER_SIZE * sizeof(uint32_t));
+   //(uint32_t*)memalign(64, AUDIO_BUFFER_SIZE * sizeof(uint32_t));
+   if(!psp->buffer)
+   {
+      RARCH_LOG("[%s][%s][%d]  psp->buffer  NULL\n",__FILE__,__PRETTY_FUNCTION__,__LINE__);
+   }
+   else
+   {
+      RARCH_LOG("[%s][%s][%d]  psp->buffer  NOT NULL %d %x\n",__FILE__,__PRETTY_FUNCTION__,__LINE__,AUDIO_BUFFER_SIZE * sizeof(uint32_t),psp->buffer);
+   }
    memset(psp->buffer, 0, AUDIO_BUFFER_SIZE * sizeof(uint32_t));
 
-   psp->zeroBuffer  = (uint32_t*)
-      memalign(64, AUDIO_OUT_COUNT   * sizeof(uint32_t));
+   psp->zeroBuffer  = (uint32_t*)malloc(AUDIO_OUT_COUNT   * sizeof(uint32_t));
+   //(uint32_t*)memalign(64, AUDIO_OUT_COUNT   * sizeof(uint32_t));
    memset(psp->zeroBuffer, 0, AUDIO_OUT_COUNT * sizeof(uint32_t));
 
    psp->read_pos    = 0;
