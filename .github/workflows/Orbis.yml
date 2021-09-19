@@ -36,3 +36,8 @@ jobs:
       with:
         name: bin-${{ steps.slug.outputs.sha8 }}
         path: homebrew.self
+
+    - name: Version of binaries
+      run: |
+        clang --version
+        orbis-ld --version
