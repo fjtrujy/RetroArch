@@ -35,7 +35,11 @@ jobs:
     - uses: actions/upload-artifact@v2
       with:
         name: bin-${{ steps.slug.outputs.sha8 }}
-        path: homebrew.self
+        path: |
+          retroarch_orbis.elf
+          homebrew.oelf
+          homebrew.self
+
 
     - name: Version of binaries
       run: |
