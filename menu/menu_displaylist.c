@@ -1491,6 +1491,18 @@ static unsigned menu_displaylist_parse_supported_cores(menu_displaylist_info_t *
          }
       }
 
+      struct retro_system_info *system = &runloop_state_get_ptr()->system.info;
+      const char *core_path            = core_path_current;
+      const char *core_name            = system ? system->library_name : NULL;
+
+      if (menu_entries_append_enum(info->list, core_name,
+                  msg_hash_to_str(current_core_enum_label),
+                  current_core_enum_label, FILE_TYPE_DIRECT_LOAD, 0, 0))
+      {
+         core_available = true;
+         count++;
+      }
+
       /* If cores were found, sort the displaylist now */
       if (core_available)
          file_list_sort_on_alt(info->list);
