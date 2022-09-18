@@ -198,7 +198,7 @@ static void load_modules()
    SifExecModuleBuffer(&iomanX_irx, size_iomanX_irx, 0, NULL, NULL);
    SifExecModuleBuffer(&fileXio_irx, size_fileXio_irx, 0, NULL, NULL);
    SifExecModuleBuffer(&sio2man_irx, size_sio2man_irx, 0, NULL, NULL);
-   fileXioInitSkipOverride();
+   fileXioInit();
 
    /* Memory Card */
    SifExecModuleBuffer(&mcman_irx, size_mcman_irx, 0, NULL, NULL);
