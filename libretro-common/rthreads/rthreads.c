@@ -55,7 +55,7 @@
 #include <time.h>
 #endif
 
-#if defined(VITA) || defined(BSD) || defined(ORBIS)
+#if defined(VITA) || defined(BSD) || defined(ORBIS) || defined(PS2)
 #include <sys/time.h>
 #endif
 
@@ -844,11 +844,7 @@ bool scond_wait_timeout(scond_t *cond, slock_t *lock, int64_t timeout_us)
    sys_time_get_current_time(&s, &n);
    now.tv_sec  = s;
    now.tv_nsec = n;
-#elif defined(PS2)
-   int tickms = ps2_clock();
-   now.tv_sec = tickms/1000;
-   now.tv_nsec = tickms * 1000;
-#elif !defined(DINGUX_BETA) && (defined(__mips__) || defined(VITA) || defined(_3DS))
+#elif !defined(DINGUX_BETA) && (defined(__mips__) || defined(VITA) || defined(_3DS) || defined(PS2))
    struct timeval tm;
 
    gettimeofday(&tm, NULL);
