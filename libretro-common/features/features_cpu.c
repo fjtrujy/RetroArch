@@ -80,7 +80,7 @@
 #endif
 
 #if defined(PS2)
-#include <ps2sdkapi.h>
+#include <timer.h>
 #endif
 
 #if !defined(__PSL1GHT__) && defined(__PS3__)
@@ -204,7 +204,7 @@ retro_perf_tick_t cpu_features_get_perf_counter(void)
 #elif defined(ORBIS)
    sceRtcGetCurrentTick((SceRtcTick*)&time_ticks);
 #elif defined(PS2)
-   time_ticks = ps2_clock();
+   time_ticks = GetTimerSystemTime();
 #elif defined(_3DS)
    time_ticks = svcGetSystemTick();
 #elif defined(WIIU)
@@ -258,7 +258,7 @@ retro_time_t cpu_features_get_time_usec(void)
 #elif defined(EMSCRIPTEN)
    return emscripten_get_now() * 1000;
 #elif defined(PS2)
-   return ps2_clock() / PS2_CLOCKS_PER_MSEC * 1000;
+   return GetTimerSystemTime() * 1000000 / kBUSCLK;
 #elif defined(VITA) || defined(PSP)
    return sceKernelGetSystemTimeWide();
 #elif defined(DJGPP)
