@@ -8,7 +8,7 @@ TARGET = retroarchpsp_salamander
 ifeq ($(DEBUG), 1)
    OPTIMIZE_LV	:= -O0 -g
 else
-   OPTIMIZE_LV	:= -O3
+   OPTIMIZE_LV	:= -O3 -g
 endif
 
 INCDIR = $(PSPPATH)/include libretro-common/include
@@ -19,9 +19,9 @@ RARCH_DEFINES = -DPSP -DIS_SALAMANDER -DRARCH_CONSOLE
 
 LIBDIR =
 LDFLAGS =
-LIBS = -lstdc++ -lpsppower
+LIBS = -lstdc++ -lpsppower -lpspprof -pg
 
-CFLAGS += $(RARCH_DEFINES)
+CFLAGS += $(RARCH_DEFINES) -pg
 
 EXTRA_TARGETS   = EBOOT.PBP
 PSP_EBOOT_TITLE = RetroArch
