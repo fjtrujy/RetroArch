@@ -152,7 +152,8 @@ static void init_drivers(bool extra_drivers)
 {
    init_fileXio_driver();
    init_memcard_driver(true);
-   init_usb_driver();
+   init_usb_driver(true);
+   init_mx4sio_driver(true);
    init_cdfs_driver();
    bool only_if_booted_from_hdd = true;
 #if defined(DEBUG) && !defined(BUILD_FOR_PCSX2)
@@ -160,7 +161,7 @@ static void init_drivers(bool extra_drivers)
 #else
    init_poweroff_driver();
 #endif
-   hddStatus = init_hdd_driver(false, only_if_booted_from_hdd);
+   hddStatus = init_hdd_driver(true, only_if_booted_from_hdd);
 
 #ifndef IS_SALAMANDER
    if (extra_drivers)
@@ -238,8 +239,9 @@ static void deinit_drivers(bool deinit_filesystem, bool deinit_powerOff)
    {
       umount_hdd_partition(mountString);
 
-      deinit_hdd_driver(false);
-      deinit_usb_driver();
+      deinit_hdd_driver(!deinit_powerOff);
+      deinit_mx4sio_driver(true);
+      deinit_usb_driver(true);
       deinit_memcard_driver(true);
       deinit_fileXio_driver();
 
