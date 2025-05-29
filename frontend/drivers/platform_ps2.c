@@ -239,6 +239,7 @@ static void deinit_drivers(bool deinit_filesystem, bool deinit_powerOff)
       umount_hdd_partition(mountString);
 
       deinit_hdd_driver(false);
+      deinit_cdfs_driver();
       deinit_usb_driver();
       deinit_memcard_driver(true);
       deinit_fileXio_driver();
