@@ -87,14 +87,14 @@ ifneq ($(V),1)
         Q := @
 endif
 
-INCDIR = -I$(PS2DEV)/gsKit/include -I$(PS2SDK)/ports/include
+INCDIR = -isystem ${PS2DEV}/llvm/lib/clang/22/include -I${PS2DEV}/ee/mips64r5900el-ps2-elf/include -I${PS2DEV}/ee/lib/gcc/mips64r5900el-ps2-elf/15.2.0/include -I$(PS2DEV)/gsKit/include -I$(PS2SDK)/ports/include
 INCDIR += -Ilibretro-common/include -Ideps -Ideps/stb -Ideps/7zip
 
 LDFLAGS += -L$(PS2DEV)/gsKit/lib -L$(PS2SDK)/ports/lib -L.
 # Lib cdvd is needed to get proper time
 LIBS += -lpatches -lgskit -ldmakit -lps2_drivers -lz -lelf-loader
 
-CFLAGS = $(OPTIMIZE_LV) $(DISABLE_WARNINGS) $(DEFINES) -DPS2 -fsingle-precision-constant -ffast-math
+CFLAGS = $(OPTIMIZE_LV) $(DISABLE_WARNINGS) $(DEFINES) -DPS2 -fsingle-precision-constant -ffast-math --target=mips64el -mcpu=r5900 -mabi=n32 -fno-pic -mno-abicalls -G0 -mvu0 -nostdinc -isystem ${PS2DEV}/llvm/lib/clang/22/include -I${PS2DEV}/ee/mips64r5900el-ps2-elf/include -I$PS2DEV/ee/lib/gcc/mips64r5900el-ps2-elf/15.2.0/include
 ASFLAGS = $(CFLAGS)
 
 EE_OBJS += $(OBJ)
@@ -155,12 +155,12 @@ include $(PS2SDK)/samples/Makefile.eeglobal_cpp
 
 %.o: %.c
 	@$(if $(Q), $(shell echo echo CC $<),)
-	$(Q)$(EE_CC) $(EE_CFLAGS) $(EE_INCS) -c $< -o $@
+	clang $(EE_CFLAGS) $(EE_INCS) -c $< -o $@
 
 %.o: %.cc
 	@$(if $(Q), $(shell echo echo CXX $<),)
-	$(Q)$(EE_CXX) $(EE_CXXFLAGS) $(EE_INCS) -c $< -o $@
+	clang++ $(EE_CXXFLAGS) $(EE_INCS) -c $< -o $@
 
 %.o: %.cpp
 	@$(if $(Q), $(shell echo echo CXX $<),)
-	$(Q)$(EE_CXX) $(EE_CXXFLAGS) $(EE_INCS) -c $< -o $@
+	clang++ $(EE_CXXFLAGS) $(EE_INCS) -c $< -o $@

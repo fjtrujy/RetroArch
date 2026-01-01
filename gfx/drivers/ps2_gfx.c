@@ -432,7 +432,7 @@ static int vsync_handler(int reason)
 {
    iSignalSema(vsync_sema_id);
 
-   ExitHandler();
+   // ExitHandler();
    return 0;
 }
 
